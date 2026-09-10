@@ -13,14 +13,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- Iconos para el footer -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    <link rel="icon" href="logo_koala.png" type="image/x-icon">
     <style>
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: #f3f4f6;
         }
 
-        /* Estilos específicos para la hoja tamaño carta */
+        /* Estilos específicos para la hoja tamaño carta/A4 */
         .page-container {
             width: 210mm;
             min-height: 297mm;
@@ -76,7 +76,7 @@
             z-index: 10;
         }
 
-        /* Ocultar panel de control al imprimir */
+        /* --- AQUÍ ESTÁ LA CORRECCIÓN DE IMPRESIÓN (ANTI GRAVITY) --- */
         @media print {
             @page {
                 margin: 0;
@@ -87,17 +87,35 @@
                 background: white;
                 margin: 0;
                 padding: 0;
+                /* Forzamos al navegador a imprimir el footer negro y la marca de agua */
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
+            /* Ocultamos el panel de control izquierdo */
             .no-print {
                 display: none !important;
             }
 
+            /* Rompemos el layout general para que el contenedor derecho fluya libremente */
+            #app {
+                display: block !important;
+            }
+
+            /* Obligamos a la vista previa a tomar el 100% del ancho del papel, quitando el 66% (w-2/3) */
+            .vista-previa {
+                width: 100% !important;
+                padding: 0 !important;
+                display: block !important;
+                background: white !important;
+            }
+
+            /* Aseguramos que la hoja ocupe exactamente las dimensiones del PDF */
             .page-container {
                 box-shadow: none;
-                margin: 0;
-                width: 100%;
-                height: 100%;
+                margin: 0 auto;
+                width: 210mm;
+                min-height: 297mm;
             }
         }
     </style>
@@ -157,8 +175,8 @@
             </button>
         </div>
 
-        <!-- VISTA PREVIA (DERECHA) -->
-        <div class="w-2/3 bg-gray-200 p-8 overflow-y-auto flex justify-center items-start">
+        <!-- VISTA PREVIA (DERECHA) - Añadí la clase 'vista-previa' aquí -->
+        <div class="vista-previa w-2/3 bg-gray-200 p-8 overflow-y-auto flex justify-center items-start">
 
             <!-- Contenedor Hoja A4 -->
             <div class="page-container">
