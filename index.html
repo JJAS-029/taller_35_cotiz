@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador Taller 35</title>
+    <!-- Tailwind CSS para estilos rápidos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue.js para la interactividad fácil -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Fuente Montserrat (estilo Antigravity/Canva) -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Iconos para el footer -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* Estilos específicos para la hoja tamaño carta */
+        .page-container {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .thick-line {
+            border-top: 3px solid #000;
+            border-bottom: 3px solid #000;
+        }
+
+        .bottom-thick-line {
+            border-bottom: 3px solid #000;
+        }
+
+        /* Marca de agua (El 35 gigante de fondo) */
+        .watermark {
+            position: absolute;
+            bottom: 10%;
+            left: -5%;
+            font-size: 450px;
+            font-weight: 800;
+            color: rgba(0, 0, 0, 0.03);
+            z-index: 0;
+            pointer-events: none;
+            line-height: 1;
+            letter-spacing: -20px;
+        }
+
+        /* Contenido por encima de la marca de agua */
+        .content-layer {
+            position: relative;
+            z-index: 10;
+            flex-grow: 1;
+        }
+
+        /* Footer negro absoluto abajo */
+        .black-footer {
+            background-color: #000;
+            color: #fff;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 1px;
+            z-index: 10;
+        }
+
+        /* Ocultar panel de control al imprimir */
+        @media print {
+            @page {
+                margin: 0;
+                size: A4 portrait;
+            }
+
+            body {
+                background: white;
+                margin: 0;
+                padding: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .page-container {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+                height: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+    <div id="app" class="flex w-full h-full">
+
+        <!-- PANEL DE CONTROL (IZQUIERDA) -->
+        <div class="no-print w-1/3 bg-white p-6 shadow-lg overflow-y-auto z-50">
+            <h2 class="text-2xl font-bold mb-6">Orquestador de Documentos</h2>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-2">Tipo de Documento</label>
+                <select v-model="tipoDoc" class="w-full p-2 border rounded">
+                    <option value="cotizacion_iva">Cotización (Con IVA)</option>
+                    <option value="cotizacion_simple">Cotización (Sin IVA)</option>
+                    <option value="ticket">Ticket (Con datos bancarios)</option>
+                </select>
+            </div>
+
+            <div class="mb-4 flex gap-4">
+                <div class="w-1/2">
+                    <label class="block text-sm font-bold mb-2">Fecha</label>
+                    <input type="text" v-model="fecha" class="w-full p-2 border rounded"
+                        placeholder="Ej: 02 de septiembre 2026">
+                </div>
+                <div class="w-1/2" v-if="tipoDoc === 'cotizacion_iva'">
+                    <label class="block text-sm font-bold mb-2">Fecha de Entrega</label>
+                    <input type="text" v-model="entrega" class="w-full p-2 border rounded"
+                        placeholder="Ej: 04 septiembre 2026">
+                </div>
+            </div>
+
+            <h3 class="font-bold mt-6 mb-2 border-b pb-2">Artículos</h3>
+            <div v-for="(item, index) in items" :key="index" class="bg-gray-50 p-3 mb-3 rounded border relative">
+                <button @click="removeItem(index)" class="absolute top-2 right-2 text-red-500 hover:text-red-700">
+                    <i class="fas fa-times"></i>
+                </button>
+                <textarea v-model="item.descripcion" placeholder="Descripción"
+                    class="w-full p-2 border rounded mb-2 text-sm" rows="2"></textarea>
+                <div class="flex gap-2">
+                    <input type="number" v-model="item.costo" placeholder="Costo"
+                        class="w-1/2 p-2 border rounded text-sm" step="0.01">
+                    <input type="number" v-model="item.cantidad" placeholder="Cant."
+                        class="w-1/2 p-2 border rounded text-sm">
+                </div>
+            </div>
+            <button @click="addItem" class="w-full bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded mb-8">
+                + Agregar Artículo
+            </button>
+
+            <button @click="imprimir"
+                class="w-full bg-black text-white font-bold py-3 px-4 rounded shadow-lg hover:bg-gray-800 transition">
+                <i class="fas fa-print mr-2"></i> Imprimir / Guardar PDF
+            </button>
+        </div>
+
+        <!-- VISTA PREVIA (DERECHA) -->
+        <div class="w-2/3 bg-gray-200 p-8 overflow-y-auto flex justify-center items-start">
+
+            <!-- Contenedor Hoja A4 -->
+            <div class="page-container">
+                <div class="watermark">35</div>
+
+                <div class="content-layer p-12 flex flex-col h-full">
+
+                    <!-- HEADER -->
+                    <div class="flex justify-between items-start mb-12">
+                        <div class="pt-8">
+                            <h1 class="text-5xl font-extrabold tracking-widest uppercase mb-4"
+                                style="letter-spacing: 4px;">
+                                {{ tipoDoc === 'ticket' ? 'TICKET' : 'COTIZACIÓN' }}
+                            </h1>
+                            <p class="text-sm font-semibold tracking-wide">
+                                FECHA: <span class="font-normal ml-2">{{ fecha }}</span>
+                            </p>
+                        </div>
+                        <!-- LOGO -->
+                        <div>
+                            <img src="logo.png" alt="Taller 35" class="h-28 object-contain">
+                        </div>
+                    </div>
+
+                    <!-- TABLA -->
+                    <div class="w-full mb-8">
+                        <!-- Encabezados -->
+                        <div class="thick-line flex py-3 font-bold text-sm tracking-widest uppercase">
+                            <div class="w-1/2">DESCRIPCIÓN</div>
+                            <div class="w-1/6 text-center">{{ tipoDoc === 'ticket' ? 'PRECIO' : 'COSTO' }}</div>
+                            <div class="w-1/6 text-center">CANTIDAD</div>
+                            <div class="w-1/6 text-right">{{ tipoDoc === 'cotizacion_iva' ? 'IMPORTE' : 'TOTAL' }}</div>
+                        </div>
+
+                        <!-- Filas -->
+                        <div class="py-4 border-b-4 border-black pb-8">
+                            <div v-for="item in items" class="flex py-3 text-sm">
+                                <div class="w-1/2 pr-4 whitespace-pre-wrap">{{ item.descripcion }}</div>
+                                <div class="w-1/6 text-center">${{ formatMoney(item.costo) }}</div>
+                                <div class="w-1/6 text-center">{{ item.cantidad }}</div>
+                                <div class="w-1/6 text-right font-medium">${{ formatMoney(item.costo * item.cantidad) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN INFERIOR DATOS -->
+                    <div class="flex justify-between items-start mt-2">
+
+                        <!-- Izquierda: Entrega o vacío -->
+                        <div class="w-1/2 text-sm font-semibold tracking-wide pt-2">
+                            <p v-if="tipoDoc === 'cotizacion_iva'">
+                                ENTREGA: <span class="font-normal">{{ entrega }}</span>
+                            </p>
+                        </div>
+
+                        <!-- Derecha: Totales -->
+                        <div class="w-1/2 text-right">
+                            <div v-if="tipoDoc === 'cotizacion_iva'" class="text-lg tracking-wide mb-2">
+                                <p class="font-bold">SUBTOTAL: <span class="font-bold">${{ formatMoney(subtotal)
+                                        }}</span></p>
+                                <p class="font-normal">IVA (16%): <span class="font-normal">${{ formatMoney(iva)
+                                        }}</span></p>
+                            </div>
+                            <div class="text-2xl font-bold tracking-widest mt-2">
+                                TOTAL: ${{ formatMoney(total) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ESPACIADO FLEXIBLE PARA EMPUJAR EL MENSAJE AL FONDO -->
+                    <div class="flex-grow flex flex-col justify-end items-center pb-10">
+
+                        <!-- Datos Bancarios (Solo Ticket) -->
+                        <div v-if="tipoDoc === 'ticket'" class="text-center mb-6">
+                            <p class="font-bold text-sm tracking-widest mb-2">DATOS BANCARIOS PARA TRANSFERENCIAS:</p>
+                            <p class="text-xs tracking-widest">CLABE: 1274 2002 1067 4925 59 / KATY PAOLA MEJIA / BANCO
+                                AZTECA</p>
+                        </div>
+
+                        <!-- Mensaje Final -->
+                        <h2 class="text-xl font-bold tracking-widest text-center" style="line-height: 1.5;">
+                            {{ tipoDoc === 'ticket' ? '¡FUE UN PLACER TRABAJAR' : '¡SERÁ UN PLACER TRABAJAR' }} <br>
+                            EN TU PROYECTO!
+                        </h2>
+                    </div>
+
+                </div> <!-- Fin content-layer -->
+
+                <!-- FOOTER NEGRO -->
+                <div class="black-footer">
+                    <div class="flex items-center gap-2">
+                        <i class="fab fa-whatsapp text-lg"></i>
+                        <span>747 127 2105</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="border border-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                            <i class="fas fa-at"></i>
+                        </div>
+                        <span>TALLER.35@GMAIL.COM</span>
+                    </div>
+                </div>
+
+            </div> <!-- Fin A4 -->
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    tipoDoc: 'cotizacion_iva',
+                    fecha: '02 de septiembre 2026',
+                    entrega: '04 septiembre 2026',
+                    items: [
+                        { descripcion: 'Vivoletas estándar 12x7\nde acrílico espejo dorado 3mm', costo: 40.00, cantidad: 1 },
+                        { descripcion: 'Vivoletas estándar 10.2x6\nde acrílico espejo dorado 3mm', costo: 34.00, cantidad: 1 }
+                    ]
+                }
+            },
+            computed: {
+                subtotal() {
+                    return this.items.reduce((sum, item) => sum + (item.costo * item.cantidad), 0);
+                },
+                iva() {
+                    return this.subtotal * 0.16;
+                },
+                total() {
+                    if (this.tipoDoc === 'cotizacion_iva') {
+                        return this.subtotal + this.iva;
+                    }
+                    return this.subtotal;
+                }
+            },
+            methods: {
+                addItem() {
+                    this.items.push({ descripcion: '', costo: 0, cantidad: 1 });
+                },
+                removeItem(index) {
+                    this.items.splice(index, 1);
+                },
+                formatMoney(value) {
+                    return Number(value).toFixed(2);
+                },
+                imprimir() {
+                    window.print();
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+
+</html>
