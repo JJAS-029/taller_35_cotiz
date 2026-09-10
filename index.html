@@ -3,33 +3,43 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador Taller 35</title>
-    <!-- Tailwind CSS para estilos rápidos -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Generador Taller 35 - Móvil</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Vue.js para la interactividad fácil -->
+    <!-- Vue.js -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Fuente Montserrat (estilo Antigravity/Canva) -->
+    <!-- Fuente Montserrat -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Iconos para el footer -->
+    <!-- Iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="logo_koala.png" type="image/x-icon">
+
     <style>
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: #f3f4f6;
         }
 
-        /* Estilos específicos dsf para la hoja tamaño carta/A4 */
+        /* HOJA TAMAÑO CARTA / A4 */
         .page-container {
             width: 210mm;
             min-height: 297mm;
             background: white;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            margin: 0 auto;
+        }
+
+        /* Ajuste para que la hoja A4 se vea entera en la pantalla del celular */
+        @media screen and (max-width: 768px) {
+            .page-wrapper {
+                zoom: 0.45;
+                /* Aleja la hoja para dispositivos móviles */
+                padding-bottom: 50px;
+            }
         }
 
         .thick-line {
@@ -37,11 +47,6 @@
             border-bottom: 3px solid #000;
         }
 
-        .bottom-thick-line {
-            border-bottom: 3px solid #000;
-        }
-
-        /* Marca de agua (El 35 gigante de fondo) */
         .watermark {
             position: absolute;
             bottom: 10%;
@@ -55,14 +60,12 @@
             letter-spacing: -20px;
         }
 
-        /* Contenido por encima de la marca de agua */
         .content-layer {
             position: relative;
             z-index: 10;
             flex-grow: 1;
         }
 
-        /* Footer negro absoluto abajo */
         .black-footer {
             background-color: #000;
             color: #fff;
@@ -76,7 +79,7 @@
             z-index: 10;
         }
 
-        /* --- AQUÍ ESTÁ LA CORRECCIÓN DE IMPRESIÓN (ANTI GRAVITY) --- */
+        /* CONFIGURACIÓN EXCLUSIVA PARA CUANDO SE GUARDA COMO PDF / IMPRIME */
         @media print {
             @page {
                 margin: 0;
@@ -87,30 +90,33 @@
                 background: white;
                 margin: 0;
                 padding: 0;
-                /* Forzamos al navegador a imprimir el footer negro y la marca de agua */
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            /* Ocultamos el panel de control izquierdo */
             .no-print {
                 display: none !important;
             }
 
-            /* Rompemos el layout general para que el contenedor derecho fluya libremente */
             #app {
                 display: block !important;
             }
 
-            /* Obligamos a la vista previa a tomar el 100% del ancho del papel, quitando el 66% (w-2/3) */
+            /* Forzamos a que la vista previa se muestre completa y sin zoom al imprimir */
             .vista-previa {
+                display: block !important;
                 width: 100% !important;
                 padding: 0 !important;
-                display: block !important;
                 background: white !important;
+                height: auto !important;
+                overflow: visible !important;
             }
 
-            /* Aseguramos que la hoja ocupe exactamente las dimensiones del PDF */
+            .page-wrapper {
+                zoom: 1 !important;
+                padding: 0 !important;
+            }
+
             .page-container {
                 box-shadow: none;
                 margin: 0 auto;
@@ -121,167 +127,204 @@
     </style>
 </head>
 
-<body class="flex h-screen overflow-hidden">
+<body class="flex flex-col h-screen overflow-hidden text-gray-800">
 
-    <div id="app" class="flex w-full h-full">
+    <div id="app" class="flex flex-col h-full w-full">
 
-        <!-- PANEL DE CONTROL (IZQUIERDA) -->
-        <div class="no-print w-1/3 bg-white p-6 shadow-lg overflow-y-auto z-50">
-            <h2 class="text-2xl font-bold mb-6">Orquestador de Documentos</h2>
+        <!-- BARRA DE NAVEGACIÓN MÓVIL (TABS) -->
+        <div class="no-print flex w-full bg-black text-white text-sm font-bold shadow-md z-50">
+            <button @click="vista = 'formulario'"
+                :class="{'bg-gray-800 border-b-4 border-white': vista === 'formulario'}"
+                class="flex-1 py-4 flex justify-center items-center transition">
+                <i class="fas fa-edit mr-2 text-lg"></i> Formulario
+            </button>
+            <button @click="vista = 'previa'" :class="{'bg-gray-800 border-b-4 border-white': vista === 'previa'}"
+                class="flex-1 py-4 flex justify-center items-center transition">
+                <i class="fas fa-file-pdf mr-2 text-lg"></i> Vista Previa
+            </button>
+        </div>
 
-            <div class="mb-4">
-                <label class="block text-sm font-bold mb-2">Tipo de Documento</label>
-                <select v-model="tipoDoc" class="w-full p-2 border rounded">
+        <!-- PESTAÑA 1: FORMULARIO -->
+        <div v-show="vista === 'formulario'" class="no-print flex-1 overflow-y-auto bg-white p-5 pb-24">
+
+            <div class="mb-5">
+                <label class="block text-sm font-bold mb-2 text-gray-700">Tipo de Documento</label>
+                <select v-model="tipoDoc"
+                    class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 focus:border-black focus:outline-none text-base">
                     <option value="cotizacion_iva">Cotización (Con IVA)</option>
                     <option value="cotizacion_simple">Cotización (Sin IVA)</option>
                     <option value="ticket">Ticket (Con datos bancarios)</option>
                 </select>
             </div>
 
-            <div class="mb-4 flex gap-4">
-                <div class="w-1/2">
-                    <label class="block text-sm font-bold mb-2">Fecha</label>
-                    <input type="text" v-model="fecha" class="w-full p-2 border rounded"
+            <div class="mb-5 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-2 text-gray-700">Fecha del Documento</label>
+                    <input type="text" v-model="fecha"
+                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none"
                         placeholder="Ej: 02 de septiembre 2026">
                 </div>
-                <div class="w-1/2" v-if="tipoDoc === 'cotizacion_iva'">
-                    <label class="block text-sm font-bold mb-2">Fecha de Entrega</label>
-                    <input type="text" v-model="entrega" class="w-full p-2 border rounded"
+                <div v-if="tipoDoc === 'cotizacion_iva'">
+                    <label class="block text-sm font-bold mb-2 text-gray-700">Fecha de Entrega</label>
+                    <input type="text" v-model="entrega"
+                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none"
                         placeholder="Ej: 04 septiembre 2026">
                 </div>
             </div>
 
-            <h3 class="font-bold mt-6 mb-2 border-b pb-2">Artículos</h3>
-            <div v-for="(item, index) in items" :key="index" class="bg-gray-50 p-3 mb-3 rounded border relative">
-                <button @click="removeItem(index)" class="absolute top-2 right-2 text-red-500 hover:text-red-700">
-                    <i class="fas fa-times"></i>
+            <h3 class="font-bold text-lg mt-8 mb-4 border-b-2 pb-2">Lista de Artículos</h3>
+
+            <!-- Tarjetas de Artículos -->
+            <div v-for="(item, index) in items" :key="index"
+                class="bg-gray-50 p-4 mb-4 rounded-xl border-2 border-gray-100 relative shadow-sm">
+                <button @click="removeItem(index)"
+                    class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200">
+                    <i class="fas fa-trash-alt"></i>
                 </button>
-                <textarea v-model="item.descripcion" placeholder="Descripción"
-                    class="w-full p-2 border rounded mb-2 text-sm" rows="2"></textarea>
-                <div class="flex gap-2">
-                    <input type="number" v-model="item.costo" placeholder="Costo"
-                        class="w-1/2 p-2 border rounded text-sm" step="0.01">
-                    <input type="number" v-model="item.cantidad" placeholder="Cant."
-                        class="w-1/2 p-2 border rounded text-sm">
+
+                <label class="block text-xs font-bold mb-1 text-gray-500 uppercase">Descripción</label>
+                <textarea v-model="item.descripcion" placeholder="Escribe el detalle aquí..."
+                    class="w-full p-3 border rounded mb-3 text-base focus:border-black focus:outline-none"
+                    rows="2"></textarea>
+
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold mb-1 text-gray-500 uppercase">Costo/Precio</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-gray-500 font-bold">$</span>
+                            <input type="number" v-model="item.costo"
+                                class="w-full p-3 pl-7 border rounded text-base focus:border-black focus:outline-none"
+                                step="0.01">
+                        </div>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-xs font-bold mb-1 text-gray-500 uppercase">Cantidad</label>
+                        <input type="number" v-model="item.cantidad"
+                            class="w-full p-3 border rounded text-base text-center focus:border-black focus:outline-none">
+                    </div>
                 </div>
             </div>
-            <button @click="addItem" class="w-full bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded mb-8">
-                + Agregar Artículo
+
+            <button @click="addItem"
+                class="w-full bg-gray-100 hover:bg-gray-200 text-black font-bold py-4 px-4 rounded-xl mb-6 border-2 border-dashed border-gray-300 transition">
+                <i class="fas fa-plus mr-2"></i> Añadir otro artículo
             </button>
 
-            <button @click="imprimir"
-                class="w-full bg-black text-white font-bold py-3 px-4 rounded shadow-lg hover:bg-gray-800 transition">
-                <i class="fas fa-print mr-2"></i> Imprimir / Guardar PDF
+            <button @click="vista = 'previa'"
+                class="w-full bg-black text-white font-bold py-4 px-4 rounded-xl shadow-lg transition text-lg mt-4">
+                Revisar y Generar PDF <i class="fas fa-arrow-right ml-2"></i>
             </button>
         </div>
 
-        <!-- VISTA PREVIA (DERECHA) - Añadí la clase 'vista-previa' aquí -->
-        <div class="vista-previa w-2/3 bg-gray-200 p-8 overflow-y-auto flex justify-center items-start">
+        <!-- PESTAÑA 2: VISTA PREVIA (LA HOJA) -->
+        <div v-show="vista === 'previa'" class="vista-previa flex-1 overflow-auto bg-gray-200 p-4 pb-32">
+            <div class="page-wrapper flex justify-center">
 
-            <!-- Contenedor Hoja A4 -->
-            <div class="page-container">
-                <div class="watermark">35</div>
+                <!-- Contenedor Hoja A4 Exacta -->
+                <div class="page-container">
+                    <div class="watermark">35</div>
 
-                <div class="content-layer p-12 flex flex-col h-full">
+                    <div class="content-layer p-12 flex flex-col h-full">
 
-                    <!-- HEADER -->
-                    <div class="flex justify-between items-start mb-12">
-                        <div class="pt-8">
-                            <h1 class="text-5xl font-extrabold tracking-widest uppercase mb-4"
-                                style="letter-spacing: 4px;">
-                                {{ tipoDoc === 'ticket' ? 'TICKET' : 'COTIZACIÓN' }}
-                            </h1>
-                            <p class="text-sm font-semibold tracking-wide">
-                                FECHA: <span class="font-normal ml-2">{{ fecha }}</span>
-                            </p>
-                        </div>
-                        <!-- LOGO -->
-                        <div>
-                            <img src="logo.png" alt="Taller 35" class="h-28 object-contain">
-                        </div>
-                    </div>
-
-                    <!-- TABLA -->
-                    <div class="w-full mb-8">
-                        <!-- Encabezados -->
-                        <div class="thick-line flex py-3 font-bold text-sm tracking-widest uppercase">
-                            <div class="w-1/2">DESCRIPCIÓN</div>
-                            <div class="w-1/6 text-center">{{ tipoDoc === 'ticket' ? 'PRECIO' : 'COSTO' }}</div>
-                            <div class="w-1/6 text-center">CANTIDAD</div>
-                            <div class="w-1/6 text-right">{{ tipoDoc === 'cotizacion_iva' ? 'IMPORTE' : 'TOTAL' }}</div>
+                        <!-- HEADER -->
+                        <div class="flex justify-between items-start mb-12">
+                            <div class="pt-8">
+                                <h1 class="text-5xl font-extrabold tracking-widest uppercase mb-4"
+                                    style="letter-spacing: 4px;">
+                                    {{ tipoDoc === 'ticket' ? 'TICKET' : 'COTIZACIÓN' }}
+                                </h1>
+                                <p class="text-sm font-semibold tracking-wide">
+                                    FECHA: <span class="font-normal ml-2">{{ fecha }}</span>
+                                </p>
+                            </div>
+                            <!-- LOGO -->
+                            <div>
+                                <img src="logo.png" alt="Taller 35" class="h-28 object-contain">
+                            </div>
                         </div>
 
-                        <!-- Filas -->
-                        <div class="py-4 border-b-4 border-black pb-8">
-                            <div v-for="item in items" class="flex py-3 text-sm">
-                                <div class="w-1/2 pr-4 whitespace-pre-wrap">{{ item.descripcion }}</div>
-                                <div class="w-1/6 text-center">${{ formatMoney(item.costo) }}</div>
-                                <div class="w-1/6 text-center">{{ item.cantidad }}</div>
-                                <div class="w-1/6 text-right font-medium">${{ formatMoney(item.costo * item.cantidad) }}
+                        <!-- TABLA -->
+                        <div class="w-full mb-8">
+                            <div class="thick-line flex py-3 font-bold text-sm tracking-widest uppercase">
+                                <div class="w-1/2">DESCRIPCIÓN</div>
+                                <div class="w-1/6 text-center">{{ tipoDoc === 'ticket' ? 'PRECIO' : 'COSTO' }}</div>
+                                <div class="w-1/6 text-center">CANTIDAD</div>
+                                <div class="w-1/6 text-right">{{ tipoDoc === 'cotizacion_iva' ? 'IMPORTE' : 'TOTAL' }}
+                                </div>
+                            </div>
+
+                            <div class="py-4 border-b-4 border-black pb-8">
+                                <div v-for="item in items" class="flex py-3 text-sm">
+                                    <div class="w-1/2 pr-4 whitespace-pre-wrap">{{ item.descripcion }}</div>
+                                    <div class="w-1/6 text-center">${{ formatMoney(item.costo) }}</div>
+                                    <div class="w-1/6 text-center">{{ item.cantidad }}</div>
+                                    <div class="w-1/6 text-right font-medium">${{ formatMoney(item.costo *
+                                        item.cantidad) }}</div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- SECCIÓN INFERIOR DATOS -->
-                    <div class="flex justify-between items-start mt-2">
-
-                        <!-- Izquierda: Entrega o vacío -->
-                        <div class="w-1/2 text-sm font-semibold tracking-wide pt-2">
-                            <p v-if="tipoDoc === 'cotizacion_iva'">
-                                ENTREGA: <span class="font-normal">{{ entrega }}</span>
-                            </p>
-                        </div>
-
-                        <!-- Derecha: Totales -->
-                        <div class="w-1/2 text-right">
-                            <div v-if="tipoDoc === 'cotizacion_iva'" class="text-lg tracking-wide mb-2">
-                                <p class="font-bold">SUBTOTAL: <span class="font-bold">${{ formatMoney(subtotal)
-                                        }}</span></p>
-                                <p class="font-normal">IVA (16%): <span class="font-normal">${{ formatMoney(iva)
-                                        }}</span></p>
+                        <!-- SECCIÓN INFERIOR -->
+                        <div class="flex justify-between items-start mt-2">
+                            <div class="w-1/2 text-sm font-semibold tracking-wide pt-2">
+                                <p v-if="tipoDoc === 'cotizacion_iva'">
+                                    ENTREGA: <span class="font-normal">{{ entrega }}</span>
+                                </p>
                             </div>
-                            <div class="text-2xl font-bold tracking-widest mt-2">
-                                TOTAL: ${{ formatMoney(total) }}
+
+                            <div class="w-1/2 text-right">
+                                <div v-if="tipoDoc === 'cotizacion_iva'" class="text-lg tracking-wide mb-2">
+                                    <p class="font-bold">SUBTOTAL: <span class="font-bold">${{ formatMoney(subtotal)
+                                            }}</span></p>
+                                    <p class="font-normal">IVA (16%): <span class="font-normal">${{ formatMoney(iva)
+                                            }}</span></p>
+                                </div>
+                                <div class="text-2xl font-bold tracking-widest mt-2">
+                                    TOTAL: ${{ formatMoney(total) }}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- ESPACIADO FLEXIBLE PARA EMPUJAR EL MENSAJE AL FONDO -->
-                    <div class="flex-grow flex flex-col justify-end items-center pb-10">
-
-                        <!-- Datos Bancarios (Solo Ticket) -->
-                        <div v-if="tipoDoc === 'ticket'" class="text-center mb-6">
-                            <p class="font-bold text-sm tracking-widest mb-2">DATOS BANCARIOS PARA TRANSFERENCIAS:</p>
-                            <p class="text-xs tracking-widest">CLABE: 1274 2002 1067 4925 59 / KATY PAOLA MEJIA / BANCO
-                                AZTECA</p>
+                        <!-- ESPACIADO FLEXIBLE PARA FONDO -->
+                        <div class="flex-grow flex flex-col justify-end items-center pb-10">
+                            <div v-if="tipoDoc === 'ticket'" class="text-center mb-6">
+                                <p class="font-bold text-sm tracking-widest mb-2">DATOS BANCARIOS PARA TRANSFERENCIAS:
+                                </p>
+                                <p class="text-xs tracking-widest">CLABE: 1274 2002 1067 4925 59 / KATY PAOLA MEJIA /
+                                    BANCO AZTECA</p>
+                            </div>
+                            <h2 class="text-xl font-bold tracking-widest text-center" style="line-height: 1.5;">
+                                {{ tipoDoc === 'ticket' ? '¡FUE UN PLACER TRABAJAR' : '¡SERÁ UN PLACER TRABAJAR' }} <br>
+                                EN TU PROYECTO!
+                            </h2>
                         </div>
 
-                        <!-- Mensaje Final -->
-                        <h2 class="text-xl font-bold tracking-widest text-center" style="line-height: 1.5;">
-                            {{ tipoDoc === 'ticket' ? '¡FUE UN PLACER TRABAJAR' : '¡SERÁ UN PLACER TRABAJAR' }} <br>
-                            EN TU PROYECTO!
-                        </h2>
                     </div>
 
-                </div> <!-- Fin content-layer -->
-
-                <!-- FOOTER NEGRO -->
-                <div class="black-footer">
-                    <div class="flex items-center gap-2">
-                        <i class="fab fa-whatsapp text-lg"></i>
-                        <span>747 127 2105</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="border border-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-                            <i class="fas fa-at"></i>
+                    <!-- FOOTER NEGRO -->
+                    <div class="black-footer">
+                        <div class="flex items-center gap-2">
+                            <i class="fab fa-whatsapp text-lg"></i>
+                            <span>747 127 2105</span>
                         </div>
-                        <span>TALLER.35@GMAIL.COM</span>
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="border border-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                <i class="fas fa-at"></i>
+                            </div>
+                            <span>TALLER.35@GMAIL.COM</span>
+                        </div>
                     </div>
-                </div>
 
-            </div> <!-- Fin A4 -->
+                </div> <!-- Fin A4 -->
+            </div>
         </div>
+
+        <!-- BOTÓN FLOTANTE DE GUARDAR PDF / IMPRIMIR (Solo visible en Vista Previa) -->
+        <button v-show="vista === 'previa'" @click="imprimir"
+            class="no-print fixed bottom-6 right-6 bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-[0_10px_25px_rgba(0,0,0,0.5)] text-2xl hover:bg-gray-800 transition z-50 animate-bounce">
+            <i class="fas fa-file-pdf"></i>
+        </button>
 
     </div>
 
@@ -291,6 +334,7 @@
         createApp({
             data() {
                 return {
+                    vista: 'formulario', // Controla qué pestaña está activa ('formulario' o 'previa')
                     tipoDoc: 'cotizacion_iva',
                     fecha: '02 de septiembre 2026',
                     entrega: '04 septiembre 2026',
@@ -325,6 +369,7 @@
                     return Number(value).toFixed(2);
                 },
                 imprimir() {
+                    // Al darle imprimir en el móvil, el navegador abrirá el menú para "Guardar como PDF" o seleccionar impresora.
                     window.print();
                 }
             }
