@@ -4,60 +4,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Generador Taller 35 - Móvil</title>
+    <title>Generador Taller 35 - Temático (Optimizado iOS)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Vue.js -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Fuente Montserrat -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- HTML2Canvas para capturar la imagen -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Fuente Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <!-- Iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    <link rel="icon" href="logo_koala.png" type="image/x-icon">
     <style>
         body {
-            font-family: 'Montserrat', sans-serif;
+            font-family: 'Poppins', sans-serif;
             background-color: #f3f4f6;
         }
 
-        /* HOJA TAMAÑO CARTA / A4 */
+        /* HOJA TAMAÑO CARTA / A4 EXACTA EN PÍXELES (BLINDADA) */
         .page-container {
-            width: 210mm;
-            min-height: 297mm;
+            width: 794px !important;
+            height: 1123px !important;
+            min-width: 794px !important;
+            min-height: 1123px !important;
+            flex-shrink: 0 !important;
             background: white;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            margin: 0 auto;
         }
 
-        /* Ajuste para que la hoja A4 se vea entera en la pantalla del celular */
-        @media screen and (max-width: 768px) {
-            .page-wrapper {
-                zoom: 0.45;
-                /* Aleja la hoja para dispositivos móviles */
-                padding-bottom: 50px;
-            }
+        /* Ajuste de escala visual para el celular */
+        .scaled-for-mobile {
+            transform: scale(0.45);
+            transform-origin: top center;
+            margin-bottom: -150%;
+        }
+
+        .capturing {
+            box-shadow: none !important;
+            transform: scale(1) !important;
+            margin-bottom: 0 !important;
         }
 
         .thick-line {
-            border-top: 3px solid #000;
-            border-bottom: 3px solid #000;
+            border-top: 3px solid;
+            border-bottom: 3px solid;
         }
 
-        .watermark {
+        /* Marca de agua usando el Logo */
+        .watermark-img {
             position: absolute;
-            bottom: 10%;
-            left: -5%;
-            font-size: 450px;
-            font-weight: 800;
-            color: rgba(0, 0, 0, 0.03);
+            bottom: 74px;
+            /* Descansa sobre el pie de página */
+            left: -40px;
+            width: 600px;
+            opacity: 0.06;
             z-index: 0;
             pointer-events: none;
-            line-height: 1;
-            letter-spacing: -20px;
+            object-fit: contain;
         }
 
         .content-layer {
@@ -66,63 +75,24 @@
             flex-grow: 1;
         }
 
-        .black-footer {
-            background-color: #000;
+        /* Pie de página (El color de fondo ahora se inyecta por Vue) */
+        .theme-footer {
             color: #fff;
-            padding: 15px 40px;
+            padding: 24px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-weight: 600;
-            font-size: 14px;
-            letter-spacing: 1px;
+            font-size: 16px;
+            letter-spacing: 1.5px;
             z-index: 10;
         }
 
-        /* CONFIGURACIÓN EXCLUSIVA PARA CUANDO SE GUARDA COMO PDF / IMPRIME */
-        @media print {
-            @page {
-                margin: 0;
-                size: A4 portrait;
-            }
-
-            body {
-                background: white;
-                margin: 0;
-                padding: 0;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-
-            #app {
-                display: block !important;
-            }
-
-            /* Forzamos a que la vista previa se muestre completa y sin zoom al imprimir */
-            .vista-previa {
-                display: block !important;
-                width: 100% !important;
-                padding: 0 !important;
-                background: white !important;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            .page-wrapper {
-                zoom: 1 !important;
-                padding: 0 !important;
-            }
-
-            .page-container {
-                box-shadow: none;
-                margin: 0 auto;
-                width: 210mm;
-                min-height: 297mm;
-            }
+        /* Contenedor que permite desbordamiento seguro al tomar la foto */
+        .safe-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            display: flex;
+            justify-content: center;
         }
     </style>
 </head>
@@ -132,7 +102,7 @@
     <div id="app" class="flex flex-col h-full w-full">
 
         <!-- BARRA DE NAVEGACIÓN MÓVIL (TABS) -->
-        <div class="no-print flex w-full bg-black text-white text-sm font-bold shadow-md z-50">
+        <div class="flex w-full bg-black text-white text-sm font-bold shadow-md z-50">
             <button @click="vista = 'formulario'"
                 :class="{'bg-gray-800 border-b-4 border-white': vista === 'formulario'}"
                 class="flex-1 py-4 flex justify-center items-center transition">
@@ -140,12 +110,12 @@
             </button>
             <button @click="vista = 'previa'" :class="{'bg-gray-800 border-b-4 border-white': vista === 'previa'}"
                 class="flex-1 py-4 flex justify-center items-center transition">
-                <i class="fas fa-file-pdf mr-2 text-lg"></i> Vista Previa
+                <i class="fas fa-image mr-2 text-lg"></i> Vista Previa
             </button>
         </div>
 
         <!-- PESTAÑA 1: FORMULARIO -->
-        <div v-show="vista === 'formulario'" class="no-print flex-1 overflow-y-auto bg-white p-5 pb-24">
+        <div v-show="vista === 'formulario'" class="flex-1 overflow-y-auto bg-white p-5 pb-24">
 
             <div class="mb-5">
                 <label class="block text-sm font-bold mb-2 text-gray-700">Tipo de Documento</label>
@@ -157,18 +127,29 @@
                 </select>
             </div>
 
+            <!-- SELECTOR DE COLOR TEMÁTICO -->
+            <div class="mb-5">
+                <label class="block text-sm font-bold mb-2 text-gray-700">Color del Tema</label>
+                <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-lg border-2 border-gray-200">
+                    <input type="color" v-model="colorTema"
+                        class="w-12 h-12 rounded cursor-pointer border-0 bg-transparent">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold uppercase">{{ colorTema }}</span>
+                        <span class="text-xs text-gray-500">Toca para cambiar</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="mb-5 space-y-4">
                 <div>
                     <label class="block text-sm font-bold mb-2 text-gray-700">Fecha del Documento</label>
-                    <input type="text" v-model="fecha"
-                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none"
-                        placeholder="Ej: 02 de septiembre 2026">
+                    <input type="date" v-model="fechaInput"
+                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none uppercase">
                 </div>
                 <div v-if="tipoDoc === 'cotizacion_iva'">
                     <label class="block text-sm font-bold mb-2 text-gray-700">Fecha de Entrega</label>
-                    <input type="text" v-model="entrega"
-                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none"
-                        placeholder="Ej: 04 septiembre 2026">
+                    <input type="date" v-model="entregaInput"
+                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none uppercase">
                 </div>
             </div>
 
@@ -212,53 +193,60 @@
 
             <button @click="vista = 'previa'"
                 class="w-full bg-black text-white font-bold py-4 px-4 rounded-xl shadow-lg transition text-lg mt-4">
-                Revisar y Generar PDF <i class="fas fa-arrow-right ml-2"></i>
+                Revisar y Generar Imagen <i class="fas fa-arrow-right ml-2"></i>
             </button>
         </div>
 
         <!-- PESTAÑA 2: VISTA PREVIA (LA HOJA) -->
-        <div v-show="vista === 'previa'" class="vista-previa flex-1 overflow-auto bg-gray-200 p-4 pb-32">
-            <div class="page-wrapper flex justify-center">
+        <div v-show="vista === 'previa'" class="flex-1 overflow-auto bg-gray-200 p-4 pb-32 safe-wrapper">
+            <div class="page-wrapper" :class="{'scaled-for-mobile': !generandoImagen}">
 
-                <!-- Contenedor Hoja A4 Exacta -->
-                <div class="page-container">
-                    <div class="watermark">35</div>
+                <!-- CONTENEDOR HOJA A4 -->
+                <div class="page-container" ref="documentoImagen" :class="{'capturing': generandoImagen}">
+
+                    <!-- MARCA DE AGUA (Logo Dinámico) -->
+                    <img src="logo.png" class="watermark-img" alt="Taller 35 Watermark">
 
                     <div class="content-layer p-12 flex flex-col h-full">
 
                         <!-- HEADER -->
-                        <div class="flex justify-between items-start mb-12">
-                            <div class="pt-8">
-                                <h1 class="text-5xl font-extrabold tracking-widest uppercase mb-4"
-                                    style="letter-spacing: 4px;">
+                        <div class="relative w-full mb-12 pt-4">
+                            <div class="absolute top-0 right-0">
+                                <img src="logo.png" alt="Taller 35" class="h-28 object-contain">
+                            </div>
+
+                            <div class="pt-24">
+                                <h1 class="text-6xl font-extrabold tracking-widest uppercase mb-4"
+                                    :style="{ color: colorTema }" style="letter-spacing: 4px;">
                                     {{ tipoDoc === 'ticket' ? 'TICKET' : 'COTIZACIÓN' }}
                                 </h1>
-                                <p class="text-sm font-semibold tracking-wide">
-                                    FECHA: <span class="font-normal ml-2">{{ fecha }}</span>
+                                <p class="text-sm tracking-wide">
+                                    <span class="font-bold text-base">FECHA:</span>
+                                    <span class="font-normal text-base ml-2"
+                                        :class="{'uppercase': tipoDoc === 'ticket'}">{{ fechaFormateada }}</span>
                                 </p>
-                            </div>
-                            <!-- LOGO -->
-                            <div>
-                                <img src="logo.png" alt="Taller 35" class="h-28 object-contain">
                             </div>
                         </div>
 
                         <!-- TABLA -->
                         <div class="w-full mb-8">
-                            <div class="thick-line flex py-3 font-bold text-sm tracking-widest uppercase">
-                                <div class="w-1/2">DESCRIPCIÓN</div>
-                                <div class="w-1/6 text-center">{{ tipoDoc === 'ticket' ? 'PRECIO' : 'COSTO' }}</div>
-                                <div class="w-1/6 text-center">CANTIDAD</div>
-                                <div class="w-1/6 text-right">{{ tipoDoc === 'cotizacion_iva' ? 'IMPORTE' : 'TOTAL' }}
+                            <div class="flex py-3 text-sm tracking-widest uppercase"
+                                :style="{ borderTop: '1.5px solid ' + colorTema, borderBottom: '4.5px solid ' + colorTema }">
+                                <div class="w-1/2 font-bold">DESCRIPCIÓN</div>
+                                <div class="w-1/6 text-center font-bold">{{ tipoDoc === 'ticket' ? 'PRECIO' : 'COSTO' }}
                                 </div>
+                                <div class="w-1/6 text-center font-bold">CANTIDAD</div>
+                                <div class="w-1/6 text-right font-bold">{{ tipoDoc === 'cotizacion_iva' ? 'IMPORTE' :
+                                    'TOTAL' }}</div>
                             </div>
 
-                            <div class="py-4 border-b-4 border-black pb-8">
+                            <div class="py-4 pb-8" :style="{ borderBottom: '1.5px solid ' + colorTema }">
                                 <div v-for="item in items" class="flex py-3 text-sm">
-                                    <div class="w-1/2 pr-4 whitespace-pre-wrap">{{ item.descripcion }}</div>
-                                    <div class="w-1/6 text-center">${{ formatMoney(item.costo) }}</div>
-                                    <div class="w-1/6 text-center">{{ item.cantidad }}</div>
-                                    <div class="w-1/6 text-right font-medium">${{ formatMoney(item.costo *
+                                    <div class="w-1/2 pr-4 whitespace-pre-wrap text-[15px] leading-relaxed">{{
+                                        item.descripcion }}</div>
+                                    <div class="w-1/6 text-center text-[15px]">${{ formatMoney(item.costo) }}</div>
+                                    <div class="w-1/6 text-center text-[15px]">{{ item.cantidad }}</div>
+                                    <div class="w-1/6 text-right text-[15px] font-bold">${{ formatMoney(item.costo *
                                         item.cantidad) }}</div>
                                 </div>
                             </div>
@@ -266,34 +254,37 @@
 
                         <!-- SECCIÓN INFERIOR -->
                         <div class="flex justify-between items-start mt-2">
-                            <div class="w-1/2 text-sm font-semibold tracking-wide pt-2">
-                                <p v-if="tipoDoc === 'cotizacion_iva'">
-                                    ENTREGA: <span class="font-normal">{{ entrega }}</span>
+                            <div class="w-1/2 text-sm tracking-wide pt-2">
+                                <p v-if="tipoDoc === 'cotizacion_iva' && entregaFormateada">
+                                    <span class="font-bold text-base">ENTREGA:</span> <span
+                                        class="font-normal text-base">{{ entregaFormateada }}</span>
                                 </p>
                             </div>
 
-                            <div class="w-1/2 text-right">
+                            <div class="w-1/2 text-right relative z-20">
                                 <div v-if="tipoDoc === 'cotizacion_iva'" class="text-lg tracking-wide mb-2">
-                                    <p class="font-bold">SUBTOTAL: <span class="font-bold">${{ formatMoney(subtotal)
+                                    <p><span class="font-bold">SUBTOTAL:</span> <span>${{ formatMoney(subtotal)
                                             }}</span></p>
-                                    <p class="font-normal">IVA (16%): <span class="font-normal">${{ formatMoney(iva)
-                                            }}</span></p>
+                                    <p><span class="font-bold">IVA (16%):</span> <span>${{ formatMoney(iva) }}</span>
+                                    </p>
                                 </div>
-                                <div class="text-2xl font-bold tracking-widest mt-2">
-                                    TOTAL: ${{ formatMoney(total) }}
+                                <div class="text-3xl tracking-widest mt-2">
+                                    <span class="font-bold">TOTAL:</span> <span class="font-bold">${{ formatMoney(total)
+                                        }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- ESPACIADO FLEXIBLE PARA FONDO -->
-                        <div class="flex-grow flex flex-col justify-end items-center pb-10">
+                        <!-- ESPACIADO FLEXIBLE PARA FONDO Y MENSAJES -->
+                        <div class="flex-grow flex flex-col justify-end items-center pb-8 relative z-20">
                             <div v-if="tipoDoc === 'ticket'" class="text-center mb-6">
-                                <p class="font-bold text-sm tracking-widest mb-2">DATOS BANCARIOS PARA TRANSFERENCIAS:
-                                </p>
-                                <p class="text-xs tracking-widest">CLABE: 1274 2002 1067 4925 59 / KATY PAOLA MEJIA /
-                                    BANCO AZTECA</p>
+                                <p class="font-bold text-[15px] tracking-widest mb-2 uppercase">DATOS BANCARIOS PARA
+                                    TRANSFERENCIAS:</p>
+                                <p class="text-[13px] tracking-widest font-semibold text-gray-800 uppercase">CLABE: 1274
+                                    2002 1067 4925 59 / KATY PAOLA MEJIA / BANCO AZTECA</p>
                             </div>
-                            <h2 class="text-xl font-bold tracking-widest text-center" style="line-height: 1.5;">
+                            <h2 class="text-2xl font-bold tracking-widest text-center uppercase"
+                                style="line-height: 1.5;">
                                 {{ tipoDoc === 'ticket' ? '¡FUE UN PLACER TRABAJAR' : '¡SERÁ UN PLACER TRABAJAR' }} <br>
                                 EN TU PROYECTO!
                             </h2>
@@ -301,29 +292,31 @@
 
                     </div>
 
-                    <!-- FOOTER NEGRO -->
-                    <div class="black-footer">
-                        <div class="flex items-center gap-2">
-                            <i class="fab fa-whatsapp text-lg"></i>
-                            <span>747 127 2105</span>
+                    <!-- FOOTER TEMÁTICO -->
+                    <div class="theme-footer relative z-20" :style="{ backgroundColor: colorTema }">
+                        <div class="flex items-center gap-3">
+                            <i class="fab fa-whatsapp text-2xl"></i>
+                            <span class="font-bold">747 127 2105</span>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-3">
                             <div
-                                class="border border-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                class="border-2 border-white rounded-full w-7 h-7 flex items-center justify-center text-sm">
                                 <i class="fas fa-at"></i>
                             </div>
-                            <span>TALLER.35@GMAIL.COM</span>
+                            <span class="font-bold">TALLER.35@GMAIL.COM</span>
                         </div>
                     </div>
 
-                </div> <!-- Fin A4 -->
+                </div>
             </div>
         </div>
 
-        <!-- BOTÓN FLOTANTE DE GUARDAR PDF / IMPRIMIR (Solo visible en Vista Previa) -->
-        <button v-show="vista === 'previa'" @click="imprimir"
-            class="no-print fixed bottom-6 right-6 bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-[0_10px_25px_rgba(0,0,0,0.5)] text-2xl hover:bg-gray-800 transition z-50 animate-bounce">
-            <i class="fas fa-file-pdf"></i>
+        <!-- BOTÓN FLOTANTE DE GUARDAR/COMPARTIR IMAGEN -->
+        <button v-show="vista === 'previa'" @click="descargarImagen" :disabled="generandoImagen"
+            class="fixed bottom-6 right-6 bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-[0_10px_25px_rgba(0,0,0,0.5)] text-2xl hover:bg-gray-800 transition z-50"
+            :class="{'opacity-50 cursor-not-allowed': generandoImagen, 'animate-bounce': !generandoImagen}">
+            <i v-if="!generandoImagen" class="fas fa-share-nodes"></i>
+            <i v-else class="fas fa-circle-notch fa-spin"></i>
         </button>
 
     </div>
@@ -333,18 +326,26 @@
 
         createApp({
             data() {
+                const hoy = new Date().toISOString().substr(0, 10);
                 return {
-                    vista: 'formulario', // Controla qué pestaña está activa ('formulario' o 'previa')
+                    vista: 'formulario',
                     tipoDoc: 'cotizacion_iva',
-                    fecha: '02 de septiembre 2026',
-                    entrega: '04 septiembre 2026',
+                    colorTema: '#000000',
+                    fechaInput: hoy,
+                    entregaInput: '',
+                    generandoImagen: false,
                     items: [
-                        { descripcion: 'Vivoletas estándar 12x7\nde acrílico espejo dorado 3mm', costo: 40.00, cantidad: 1 },
-                        { descripcion: 'Vivoletas estándar 10.2x6\nde acrílico espejo dorado 3mm', costo: 34.00, cantidad: 1 }
+                        { descripcion: 'Vivoletas estándar 12x7\nde acrílico espejo dorado 3mm', costo: 40.00, cantidad: 1 }
                     ]
                 }
             },
             computed: {
+                fechaFormateada() {
+                    return this.formatearFecha(this.fechaInput);
+                },
+                entregaFormateada() {
+                    return this.formatearFecha(this.entregaInput);
+                },
                 subtotal() {
                     return this.items.reduce((sum, item) => sum + (item.costo * item.cantidad), 0);
                 },
@@ -359,6 +360,13 @@
                 }
             },
             methods: {
+                formatearFecha(fechaStr) {
+                    if (!fechaStr) return '';
+                    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+                    const partes = fechaStr.split('-');
+                    if (partes.length !== 3) return fechaStr;
+                    return `${partes[2]} de ${meses[parseInt(partes[1]) - 1]} ${partes[0]}`;
+                },
                 addItem() {
                     this.items.push({ descripcion: '', costo: 0, cantidad: 1 });
                 },
@@ -366,11 +374,72 @@
                     this.items.splice(index, 1);
                 },
                 formatMoney(value) {
-                    return Number(value).toFixed(2);
+                    return Number(value).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
-                imprimir() {
-                    // Al darle imprimir en el móvil, el navegador abrirá el menú para "Guardar como PDF" o seleccionar impresora.
-                    window.print();
+                async descargarImagen() {
+                    if (this.generandoImagen) return;
+                    this.generandoImagen = true;
+
+                    try {
+                        await this.$nextTick();
+                        await new Promise(r => setTimeout(r, 500));
+
+                        const element = this.$refs.documentoImagen;
+                        const nombreArchivo = this.tipoDoc === 'ticket' ? 'Ticket_Taller35.jpg' : 'Cotizacion_Taller35.jpg';
+
+                        const canvas = await html2canvas(element, {
+                            scale: 2,
+                            useCORS: true,
+                            backgroundColor: '#ffffff',
+                            width: 794,
+                            height: 1123,
+                            windowWidth: 794
+                        });
+
+                        // Convertimos la imagen a un Blob (Formato ligero ideal para iPhone/Android)
+                        canvas.toBlob(async (blob) => {
+                            if (!blob) {
+                                this.generandoImagen = false;
+                                alert("Error al procesar la imagen.");
+                                return;
+                            }
+
+                            // MAGIA PARA iPHONE Y ANDROID MODERNOS: Usar menú de compartir nativo
+                            if (navigator.share && navigator.canShare) {
+                                const file = new File([blob], nombreArchivo, { type: 'image/jpeg' });
+
+                                if (navigator.canShare({ files: [file] })) {
+                                    try {
+                                        await navigator.share({
+                                            title: 'Documento Taller 35',
+                                            files: [file]
+                                        });
+                                        this.generandoImagen = false;
+                                        return; // Éxito total en celular
+                                    } catch (err) {
+                                        console.log("El usuario cerró el menú de compartir");
+                                        // Si cancela, no es un error real, solo regresamos a la normalidad
+                                    }
+                                }
+                            }
+
+                            // FALLBACK: Si está en PC o falla el menú de compartir, forzamos descarga tradicional
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(blob);
+                            link.download = nombreArchivo;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(link.href);
+
+                            this.generandoImagen = false;
+                        }, 'image/jpeg', 0.95);
+
+                    } catch (error) {
+                        console.error("Error al generar:", error);
+                        alert("Hubo un problema al crear la imagen. Por favor intenta de nuevo.");
+                        this.generandoImagen = false;
+                    }
                 }
             }
         }).mount('#app')
