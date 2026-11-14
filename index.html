@@ -87,6 +87,30 @@
             z-index: 10;
         }
 
+        /* MODO COMPACTO: se activa solo cuando los artículos no caben en la hoja */
+        .page-container.compacto .encabezado {
+            margin-bottom: 24px !important;
+        }
+
+        .page-container.compacto .lista-items {
+            padding-top: 8px !important;
+            padding-bottom: 16px !important;
+        }
+
+        .page-container.compacto .fila-item {
+            padding-top: 5px !important;
+            padding-bottom: 5px !important;
+            font-size: 13px !important;
+        }
+
+        /* Mantiene la hoja renderizada (fuera de la vista) para poder medir si cabe */
+        .fuera-de-pantalla {
+            position: fixed !important;
+            left: -10000px;
+            top: 0;
+            visibility: hidden;
+        }
+
         /* Contenedor que permite desbordamiento seguro al tomar la foto */
         .safe-wrapper {
             width: 100%;
@@ -116,6 +140,13 @@
 
         <!-- PESTAÑA 1: FORMULARIO -->
         <div v-show="vista === 'formulario'" class="flex-1 overflow-y-auto bg-white p-5 pb-24">
+
+            <div class="flex justify-end mb-3">
+                <button @click="nuevoDocumento"
+                    class="text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-file-circle-plus mr-1"></i> Nuevo documento
+                </button>
+            </div>
 
             <div class="mb-5">
                 <label class="block text-sm font-bold mb-2 text-gray-700">Tipo de Documento</label>
@@ -156,6 +187,11 @@
                     <input type="date" v-model="entregaInput"
                         class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none uppercase">
                 </div>
+                <div>
+                    <label class="block text-sm font-bold mb-2 text-gray-700">Cliente</label>
+                    <input type="text" v-model="cliente" placeholder="Nombre del cliente (opcional)"
+                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none">
+                </div>
             </div>
 
             <h3 class="font-bold text-lg mt-8 mb-4 border-b-2 pb-2">Lista de Artículos</h3>
@@ -191,6 +227,13 @@
                 </div>
             </div>
 
+            <div v-if="desborde"
+                class="bg-red-50 border-2 border-red-200 text-red-700 rounded-xl p-4 mb-4 text-sm font-semibold">
+                <i class="fas fa-triangle-exclamation mr-2"></i>
+                El contenido no cabe en la hoja y la parte de abajo se cortará en la imagen. Acorta las descripciones,
+                quita artículos o divídelos en dos documentos.
+            </div>
+
             <button @click="addItem"
                 class="w-full bg-gray-100 hover:bg-gray-200 text-black font-bold py-4 px-4 rounded-xl mb-6 border-2 border-dashed border-gray-300 transition">
                 <i class="fas fa-plus mr-2"></i> Añadir otro artículo
@@ -200,14 +243,45 @@
                 class="w-full bg-black text-white font-bold py-4 px-4 rounded-xl shadow-lg transition text-lg mt-4">
                 Revisar y Generar Imagen <i class="fas fa-arrow-right ml-2"></i>
             </button>
+
+            <!-- HISTORIAL DE DOCUMENTOS GENERADOS -->
+            <div v-if="historial.length" class="mt-10">
+                <h3 class="font-bold text-lg mb-4 border-b-2 pb-2">Historial</h3>
+                <div v-for="(h, i) in historial" :key="h.id"
+                    class="flex items-center justify-between bg-gray-50 p-3 mb-2 rounded-lg border-2 border-gray-100">
+                    <div class="min-w-0">
+                        <p class="font-bold text-sm truncate">{{ h.cliente || 'Sin cliente' }}</p>
+                        <p class="text-xs text-gray-500">{{ nombreTipo(h.tipoDoc) }} · {{ formatearFecha(h.fechaInput)
+                            }} · ${{ formatMoney(h.total) }}</p>
+                    </div>
+                    <div class="flex gap-2 shrink-0 ml-2">
+                        <button @click="abrirHistorial(h)"
+                            class="px-3 py-2 bg-black text-white text-xs font-bold rounded-lg">Abrir</button>
+                        <button @click="borrarHistorial(i)"
+                            class="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- PESTAÑA 2: VISTA PREVIA (LA HOJA) -->
-        <div v-show="vista === 'previa'" class="flex-1 overflow-auto bg-gray-200 p-4 pb-32 safe-wrapper">
+        <!-- Aviso flotante en la vista previa (no sale en la imagen) -->
+        <div v-if="vista === 'previa' && desborde"
+            class="fixed top-[64px] left-4 right-4 z-40 bg-red-50 border-2 border-red-200 text-red-700 rounded-xl p-3 text-sm font-semibold shadow-lg">
+            <i class="fas fa-triangle-exclamation mr-2"></i>
+            El contenido no cabe en la hoja; la parte de abajo saldrá cortada.
+        </div>
+
+        <!-- Se oculta fuera de pantalla (en vez de display:none) para poder medir si el contenido cabe -->
+        <div class="flex-1 overflow-auto bg-gray-200 p-4 pb-32 safe-wrapper"
+            :class="{'fuera-de-pantalla': vista !== 'previa'}">
             <div class="page-wrapper" :class="{'scaled-for-mobile': !generandoImagen}">
 
                 <!-- CONTENEDOR HOJA A4 -->
-                <div class="page-container" ref="documentoImagen" :class="{'capturing': generandoImagen}">
+                <div class="page-container" ref="documentoImagen"
+                    :class="{'capturing': generandoImagen, 'compacto': compacto}">
 
                     <!-- MARCA DE AGUA (Logo Dinámico) -->
                     <img src="logo.png" class="watermark-img" alt="Taller 35 Watermark">
@@ -215,7 +289,7 @@
                     <div class="content-layer p-12 flex flex-col h-full">
 
                         <!-- HEADER -->
-                        <div class="relative w-full mb-12 pt-4">
+                        <div class="encabezado relative w-full mb-12 pt-4">
                             <div class="absolute top-0 right-0">
                                 <img src="logo.png" alt="Taller 35" class="h-28 object-contain">
                             </div>
@@ -229,6 +303,10 @@
                                     <span class="font-bold text-base">FECHA:</span>
                                     <span class="font-normal text-base ml-2"
                                         :class="{'uppercase': tipoDoc === 'ticket'}">{{ fechaFormateada }}</span>
+                                </p>
+                                <p v-if="cliente.trim()" class="text-sm tracking-wide mt-1">
+                                    <span class="font-bold text-base">CLIENTE:</span>
+                                    <span class="font-normal text-base ml-2">{{ cliente }}</span>
                                 </p>
                             </div>
                         </div>
@@ -245,13 +323,13 @@
                                     'TOTAL' }}</div>
                             </div>
 
-                            <div class="py-4 pb-8" :style="{ borderBottom: '1.5px solid ' + colorTema }">
-                                <div v-for="item in items" class="flex py-3 text-sm">
-                                    <div class="w-1/2 pr-4 whitespace-pre-wrap text-[15px] leading-relaxed">{{
+                            <div class="lista-items py-4 pb-8" :style="{ borderBottom: '1.5px solid ' + colorTema }">
+                                <div v-for="item in items" class="fila-item flex py-3 text-[15px]">
+                                    <div class="w-1/2 pr-4 whitespace-pre-wrap leading-relaxed">{{
                                         item.descripcion }}</div>
-                                    <div class="w-1/6 text-center text-[15px]">${{ formatMoney(item.costo) }}</div>
-                                    <div class="w-1/6 text-center text-[15px]">{{ item.cantidad }}</div>
-                                    <div class="w-1/6 text-right text-[15px] font-bold">${{ formatMoney(item.costo *
+                                    <div class="w-1/6 text-center">${{ formatMoney(item.costo) }}</div>
+                                    <div class="w-1/6 text-center">{{ item.cantidad }}</div>
+                                    <div class="w-1/6 text-right font-bold">${{ formatMoney(item.costo *
                                         item.cantidad) }}</div>
                                 </div>
                             </div>
@@ -331,29 +409,105 @@
     <script>
         const { createApp } = Vue
 
+        const CLAVE_BORRADOR = 'taller35_borrador';
+        const CLAVE_HISTORIAL = 'taller35_historial';
+        const MAX_HISTORIAL = 30;
+        let chequeoActual = 0;
+
+        // Fecha de hoy en hora local (toISOString usa UTC y en la noche daba el día siguiente)
+        function fechaHoy() {
+            const d = new Date();
+            const dos = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
+        }
+
+        function documentoVacio() {
+            return {
+                tipoDoc: 'cotizacion_iva',
+                colorTema: '#000000',
+                mostrarFrase: true,
+                fechaInput: fechaHoy(),
+                entregaInput: '',
+                cliente: '',
+                items: [{ descripcion: '', costo: 0, cantidad: 1 }]
+            };
+        }
+
+        function leerJSON(clave) {
+            try {
+                return JSON.parse(localStorage.getItem(clave));
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function guardarJSON(clave, valor) {
+            try {
+                localStorage.setItem(clave, JSON.stringify(valor));
+            } catch (e) {
+                // Sin almacenamiento disponible (modo privado, etc.): la app sigue funcionando sin guardar
+            }
+        }
+
+        // Toma solo los campos conocidos de un documento guardado, para no romper con datos viejos o incompletos
+        function normalizarDocumento(doc) {
+            const base = documentoVacio();
+            if (!doc || typeof doc !== 'object') return base;
+            for (const campo of Object.keys(base)) {
+                if (campo in doc) base[campo] = doc[campo];
+            }
+            if (!Array.isArray(base.items) || base.items.length === 0) base.items = documentoVacio().items;
+            base.items = base.items.map(i => ({ descripcion: i.descripcion || '', costo: i.costo ?? 0, cantidad: i.cantidad ?? 1 }));
+            if (typeof base.cliente !== 'string') base.cliente = '';
+            return base;
+        }
+
         createApp({
             data() {
-                const hoy = new Date().toISOString().substr(0, 10);
+                const historial = leerJSON(CLAVE_HISTORIAL);
                 return {
                     vista: 'formulario',
-                    tipoDoc: 'cotizacion_iva',
-                    colorTema: '#000000',
-                    mostrarFrase: true,
-                    fechaInput: hoy,
-                    entregaInput: '',
+                    ...normalizarDocumento(leerJSON(CLAVE_BORRADOR)),
                     generandoImagen: false,
-                    items: [
-                        { descripcion: 'Vivoletas estándar 12x7\nde acrílico espejo dorado 3mm', costo: 40.00, cantidad: 1 }
-                    ]
+                    desborde: false,
+                    compacto: false,
+                    restaurando: false,
+                    historial: Array.isArray(historial) ? historial : []
                 }
             },
             watch: {
                 // Por defecto: frase visible en cotizaciones, oculta en ticket
                 tipoDoc(nuevo) {
+                    if (this.restaurando) return;
                     this.mostrarFrase = nuevo !== 'ticket';
+                },
+                // Guarda el borrador y revisa si cabe en la hoja con cada cambio
+                documento: {
+                    deep: true,
+                    handler(doc) {
+                        guardarJSON(CLAVE_BORRADOR, doc);
+                        this.checarDesborde();
+                    }
                 }
             },
+            mounted() {
+                this.checarDesborde();
+                // La fuente y el logo cambian las medidas al terminar de cargar
+                if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.checarDesborde());
+                window.addEventListener('load', () => this.checarDesborde());
+            },
             computed: {
+                documento() {
+                    return {
+                        tipoDoc: this.tipoDoc,
+                        colorTema: this.colorTema,
+                        mostrarFrase: this.mostrarFrase,
+                        fechaInput: this.fechaInput,
+                        entregaInput: this.entregaInput,
+                        cliente: this.cliente,
+                        items: this.items
+                    };
+                },
                 fechaFormateada() {
                     return this.formatearFecha(this.fechaInput);
                 },
@@ -390,8 +544,69 @@
                 formatMoney(value) {
                     return Number(value).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 },
+                nombreTipo(tipo) {
+                    return {
+                        cotizacion_iva: 'Cotización con IVA',
+                        cotizacion_simple: 'Cotización sin IVA',
+                        ticket: 'Ticket'
+                    }[tipo] || 'Documento';
+                },
+                hojaDesbordada() {
+                    const el = this.$refs.documentoImagen;
+                    return !!el && el.scrollHeight > el.clientHeight + 1;
+                },
+                // Si no cabe, primero intenta modo compacto; si aun así no cabe, muestra el aviso
+                async checarDesborde() {
+                    const id = ++chequeoActual;
+                    this.compacto = false;
+                    await this.$nextTick();
+                    if (id !== chequeoActual) return;
+                    if (!this.hojaDesbordada()) {
+                        this.desborde = false;
+                        return;
+                    }
+                    this.compacto = true;
+                    await this.$nextTick();
+                    if (id !== chequeoActual) return;
+                    this.desborde = this.hojaDesbordada();
+                },
+                // Carga un documento completo sin que el cambio de tipo reinicie la casilla de la frase
+                async cargarDocumento(doc) {
+                    this.restaurando = true;
+                    Object.assign(this, normalizarDocumento(JSON.parse(JSON.stringify(doc))));
+                    await this.$nextTick();
+                    this.restaurando = false;
+                },
+                nuevoDocumento() {
+                    if (!confirm('¿Empezar un documento nuevo? Se borrará lo que tienes en el formulario.')) return;
+                    this.cargarDocumento(documentoVacio());
+                    this.vista = 'formulario';
+                },
+                guardarEnHistorial() {
+                    const doc = JSON.parse(JSON.stringify(this.documento));
+                    const entrada = { id: Date.now(), ...doc, total: this.total };
+                    // Si es el mismo documento que el último guardado, solo lo actualiza
+                    const ultimo = this.historial[0];
+                    if (ultimo && JSON.stringify(normalizarDocumento(ultimo)) === JSON.stringify(normalizarDocumento(doc))) {
+                        this.historial.splice(0, 1);
+                    }
+                    this.historial.unshift(entrada);
+                    this.historial.splice(MAX_HISTORIAL);
+                    guardarJSON(CLAVE_HISTORIAL, this.historial);
+                },
+                abrirHistorial(entrada) {
+                    if (!confirm('¿Abrir este documento? Se reemplazará lo que tienes en el formulario.')) return;
+                    this.cargarDocumento(entrada);
+                    this.vista = 'formulario';
+                },
+                borrarHistorial(index) {
+                    if (!confirm('¿Borrar este documento del historial?')) return;
+                    this.historial.splice(index, 1);
+                    guardarJSON(CLAVE_HISTORIAL, this.historial);
+                },
                 async descargarImagen() {
                     if (this.generandoImagen) return;
+                    if (this.desborde && !confirm('El contenido no cabe en la hoja y saldrá cortado. ¿Generar la imagen de todos modos?')) return;
                     this.generandoImagen = true;
 
                     try {
@@ -409,6 +624,8 @@
                             height: 1123,
                             windowWidth: 794
                         });
+
+                        this.guardarEnHistorial();
 
                         // Convertimos la imagen a un Blob (Formato ligero ideal para iPhone/Android)
                         canvas.toBlob(async (blob) => {
