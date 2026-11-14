@@ -125,6 +125,11 @@
                     <option value="cotizacion_simple">Cotización (Sin IVA)</option>
                     <option value="ticket">Ticket (Con datos bancarios)</option>
                 </select>
+                <label v-if="tipoDoc === 'ticket'"
+                    class="flex items-center gap-3 mt-3 bg-gray-50 p-3 rounded-lg border-2 border-gray-200 cursor-pointer">
+                    <input type="checkbox" v-model="mostrarFrase" class="w-5 h-5 accent-black">
+                    <span class="text-sm font-bold text-gray-700">Mostrar frase "¡Fue un placer trabajar en tu proyecto!"</span>
+                </label>
             </div>
 
             <!-- SELECTOR DE COLOR TEMÁTICO -->
@@ -277,13 +282,15 @@
 
                         <!-- ESPACIADO FLEXIBLE PARA FONDO Y MENSAJES -->
                         <div class="flex-grow flex flex-col justify-end items-center pb-8 relative z-20">
-                            <div v-if="tipoDoc === 'ticket'" class="text-center mb-6">
-                                <p class="font-bold text-[15px] tracking-widest mb-2 uppercase">DATOS BANCARIOS PARA
+                            <div v-if="tipoDoc === 'ticket'" class="text-center" :class="{ 'mb-6': mostrarFrase }">
+                                <p class="font-bold text-2xl tracking-widest mb-3 uppercase">DATOS BANCARIOS PARA
                                     TRANSFERENCIAS:</p>
-                                <p class="text-[13px] tracking-widest font-semibold text-gray-800 uppercase">CLABE: 1274
-                                    2002 1067 4925 59 / KATY PAOLA MEJIA / BANCO AZTECA</p>
+                                <p class="text-xl tracking-widest font-semibold text-gray-800 uppercase">CLABE: 7229
+                                    6901 0587 1915 79</p>
+                                <p class="text-xl tracking-widest font-semibold text-gray-800 uppercase">KATY PAOLA MEJIA
+                                    GARCIA / MERCADO PAGO</p>
                             </div>
-                            <h2 class="text-2xl font-bold tracking-widest text-center uppercase"
+                            <h2 v-if="tipoDoc !== 'ticket' || mostrarFrase" class="text-2xl font-bold tracking-widest text-center uppercase"
                                 style="line-height: 1.5;">
                                 {{ tipoDoc === 'ticket' ? '¡FUE UN PLACER TRABAJAR' : '¡SERÁ UN PLACER TRABAJAR' }} <br>
                                 EN TU PROYECTO!
@@ -331,6 +338,7 @@
                     vista: 'formulario',
                     tipoDoc: 'cotizacion_iva',
                     colorTema: '#000000',
+                    mostrarFrase: false,
                     fechaInput: hoy,
                     entregaInput: '',
                     generandoImagen: false,
