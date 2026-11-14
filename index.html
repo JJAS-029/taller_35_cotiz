@@ -5,12 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Generador Taller 35 - Temático (Optimizado iOS)</title>
+    <!-- Versiones fijas para que una actualización externa no rompa la página -->
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <!-- Vue.js -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3.5.13/dist/vue.global.prod.js"></script>
     <!-- HTML2Canvas para capturar la imagen -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF para exportar en PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- Fuente Poppins -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
@@ -169,9 +172,25 @@
                 <div class="flex items-center gap-4 bg-gray-50 p-3 rounded-lg border-2 border-gray-200">
                     <input type="color" v-model="colorTema"
                         class="w-12 h-12 rounded cursor-pointer border-0 bg-transparent">
-                    <div class="flex flex-col">
+                    <div class="flex flex-col flex-1">
                         <span class="text-sm font-bold uppercase">{{ colorTema }}</span>
                         <span class="text-xs text-gray-500">Toca para cambiar</span>
+                    </div>
+                    <button @click="guardarColor"
+                        class="text-xs font-bold bg-white border-2 border-gray-200 hover:bg-gray-100 px-3 py-2 rounded-lg">
+                        <i class="fas fa-plus mr-1"></i> Guardar
+                    </button>
+                </div>
+                <div v-if="coloresGuardados.length" class="flex flex-wrap gap-3 mt-3">
+                    <div v-for="c in coloresGuardados" :key="c" class="relative">
+                        <button @click="colorTema = c" :title="c"
+                            class="w-10 h-10 rounded-full border-2 shadow-sm"
+                            :class="colorTema.toLowerCase() === c ? 'border-black ring-2 ring-offset-2 ring-black' : 'border-gray-200'"
+                            :style="{ backgroundColor: c }"></button>
+                        <button @click="borrarColor(c)" title="Quitar color"
+                            class="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center bg-white border border-gray-300 rounded-full text-[10px] text-gray-600">
+                            <i class="fas fa-xmark"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -186,6 +205,21 @@
                     <label class="block text-sm font-bold mb-2 text-gray-700">Fecha de Entrega</label>
                     <input type="date" v-model="entregaInput"
                         class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none uppercase">
+                </div>
+                <div v-if="tipoDoc !== 'ticket'">
+                    <label class="block text-sm font-bold mb-2 text-gray-700">Vigencia de la cotización</label>
+                    <div class="flex gap-2">
+                        <button v-for="d in [7, 15, 30]" :key="d" @click="vigenciaDias = (vigenciaDias == d ? '' : d)"
+                            class="flex-1 text-sm font-bold py-3 rounded-lg border-2"
+                            :class="vigenciaDias == d ? 'bg-black text-white border-black' : 'bg-gray-50 border-gray-200'">
+                            {{ d }} días
+                        </button>
+                        <input type="number" v-model="vigenciaDias" placeholder="Otro" min="1"
+                            class="w-20 p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base text-center focus:border-black focus:outline-none">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ vigenciaFormateada ? 'Válida hasta el ' + vigenciaFormateada : 'Sin vigencia (no se muestra en la hoja).' }}
+                    </p>
                 </div>
                 <div>
                     <label class="block text-sm font-bold mb-2 text-gray-700">Cliente</label>
@@ -217,6 +251,7 @@
                 <label class="block text-xs font-bold mb-1 text-gray-500 uppercase">Descripción</label>
                 <textarea v-model="item.descripcion" placeholder="Escribe el detalle aquí..."
                     class="w-full p-3 border rounded mb-3 text-base focus:border-black focus:outline-none"
+                    :class="{ 'border-red-400 bg-red-50': !item.descripcion.trim() }"
                     rows="2"></textarea>
 
                 <div class="flex gap-3">
@@ -224,17 +259,24 @@
                         <label class="block text-xs font-bold mb-1 text-gray-500 uppercase">Costo/Precio</label>
                         <div class="relative">
                             <span class="absolute left-3 top-3 text-gray-500 font-bold">$</span>
-                            <input type="number" v-model="item.costo"
+                            <input type="number" v-model="item.costo" min="0"
                                 class="w-full p-3 pl-7 border rounded text-base focus:border-black focus:outline-none"
+                                :class="{ 'border-red-400 bg-red-50': Number(item.costo) < 0 }"
                                 step="0.01">
                         </div>
                     </div>
                     <div class="w-1/2">
                         <label class="block text-xs font-bold mb-1 text-gray-500 uppercase">Cantidad</label>
-                        <input type="number" v-model="item.cantidad"
-                            class="w-full p-3 border rounded text-base text-center focus:border-black focus:outline-none">
+                        <input type="number" v-model="item.cantidad" min="1"
+                            class="w-full p-3 border rounded text-base text-center focus:border-black focus:outline-none"
+                            :class="{ 'border-red-400 bg-red-50': !(Number(item.cantidad) > 0) }">
                     </div>
                 </div>
+            </div>
+
+            <div v-if="problemasArticulos.length"
+                class="bg-yellow-50 border-2 border-yellow-200 text-yellow-800 rounded-xl p-4 mb-4 text-sm font-semibold">
+                <p v-for="p in problemasArticulos" :key="p"><i class="fas fa-circle-exclamation mr-2"></i>{{ p }}</p>
             </div>
 
             <div v-if="desborde"
@@ -257,6 +299,24 @@
 
             <!-- ANTICIPO Y SALDO -->
             <h3 class="font-bold text-lg mt-8 mb-4 border-b-2 pb-2">Pago</h3>
+            <div class="mb-5">
+                <label class="block text-sm font-bold mb-2 text-gray-700">Descuento</label>
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <span class="absolute left-3 top-3 text-gray-500 font-bold">{{ descuentoTipo === 'monto' ? '$' : '%' }}</span>
+                        <input type="number" v-model="descuento" placeholder="0" step="0.01" min="0"
+                            class="w-full p-3 pl-8 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none">
+                    </div>
+                    <button v-for="t in [['porcentaje', '%'], ['monto', '$']]" :key="t[0]" @click="descuentoTipo = t[0]"
+                        class="w-14 text-base font-bold rounded-lg border-2"
+                        :class="descuentoTipo === t[0] ? 'bg-black text-white border-black' : 'bg-gray-50 border-gray-200'">
+                        {{ t[1] }}
+                    </button>
+                </div>
+                <p v-if="descuentoMonto > 0" class="text-sm mt-2 text-gray-600">
+                    Descuento de ${{ formatMoney(descuentoMonto) }} sobre el subtotal.
+                </p>
+            </div>
             <div class="mb-6">
                 <label class="block text-sm font-bold mb-2 text-gray-700">Anticipo</label>
                 <div class="relative">
@@ -278,6 +338,19 @@
                 <p v-if="anticipoNum > total + 0.005" class="text-sm mt-1 text-red-600 font-semibold">
                     <i class="fas fa-triangle-exclamation mr-1"></i> El anticipo es mayor que el total.
                 </p>
+                <label
+                    class="flex items-center gap-3 mt-4 bg-gray-50 p-3 rounded-lg border-2 border-gray-200 cursor-pointer">
+                    <input type="checkbox" v-model="mostrarLetra" class="w-5 h-5 accent-black">
+                    <span class="text-sm font-bold text-gray-700">Mostrar total con letra</span>
+                </label>
+            </div>
+
+            <!-- NOTAS / CONDICIONES -->
+            <h3 class="font-bold text-lg mt-8 mb-4 border-b-2 pb-2">Notas</h3>
+            <div class="mb-6">
+                <textarea v-model="notas" rows="3"
+                    placeholder="Ej. No incluye instalación. Diseño sujeto a aprobación. (Opcional)"
+                    class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none"></textarea>
             </div>
 
             <button @click="vista = 'previa'"
@@ -387,13 +460,23 @@
                                     <span class="font-bold text-base">ENTREGA:</span> <span
                                         class="font-normal text-base">{{ entregaFormateada }}</span>
                                 </p>
+                                <p v-if="tipoDoc !== 'ticket' && vigenciaFormateada" class="mt-1">
+                                    <span class="font-bold text-base">VÁLIDA HASTA:</span> <span
+                                        class="font-normal text-base">{{ vigenciaFormateada }}</span>
+                                </p>
                             </div>
 
                             <div class="w-1/2 text-right relative z-20">
-                                <div v-if="tipoDoc === 'cotizacion_iva'" class="text-lg tracking-wide mb-2">
+                                <div v-if="tipoDoc === 'cotizacion_iva' || descuentoMonto > 0"
+                                    class="text-lg tracking-wide mb-2">
                                     <p><span class="font-bold">SUBTOTAL:</span> <span>${{ formatMoney(subtotal)
                                             }}</span></p>
-                                    <p><span class="font-bold">IVA (16%):</span> <span>${{ formatMoney(iva) }}</span>
+                                    <p v-if="descuentoMonto > 0"><span class="font-bold">DESCUENTO{{ descuentoTipo ===
+                                            'porcentaje' ? ' (' + descuentoNum + '%)' : '' }}:</span>&nbsp;<span>-${{
+                                            formatMoney(descuentoMonto) }}</span>
+                                    </p>
+                                    <p v-if="tipoDoc === 'cotizacion_iva'"><span class="font-bold">IVA (16%):</span>&nbsp;<span>${{
+                                            formatMoney(iva) }}</span>
                                     </p>
                                 </div>
                                 <div class="text-3xl tracking-widest mt-2">
@@ -407,6 +490,16 @@
                                             formatMoney(resta) }}</span></p>
                                 </div>
                             </div>
+                        </div>
+
+                        <p v-if="mostrarLetra && total > 0"
+                            class="text-right text-sm tracking-wide font-semibold text-gray-700 mt-3 uppercase">
+                            ({{ totalConLetra }})
+                        </p>
+
+                        <div v-if="notas.trim()" class="mt-5 text-sm tracking-wide relative z-20">
+                            <p class="font-bold text-base mb-1">NOTAS:</p>
+                            <p class="whitespace-pre-wrap leading-relaxed">{{ notas }}</p>
                         </div>
 
                         <!-- ESPACIADO FLEXIBLE PARA FONDO Y MENSAJES -->
@@ -448,7 +541,12 @@
         </div>
 
         <!-- BOTÓN FLOTANTE DE GUARDAR/COMPARTIR IMAGEN -->
-        <button v-show="vista === 'previa'" @click="descargarImagen" :disabled="generandoImagen"
+        <button v-show="vista === 'previa'" @click="descargarImagen('pdf')" :disabled="generandoImagen" title="Guardar en PDF"
+            class="fixed bottom-8 right-28 bg-white text-black border-2 border-black rounded-full h-12 px-4 flex items-center justify-center shadow-lg text-sm font-bold hover:bg-gray-100 transition z-50"
+            :class="{'opacity-50 cursor-not-allowed': generandoImagen}">
+            <i class="fas fa-file-pdf mr-2 text-lg"></i> PDF
+        </button>
+        <button v-show="vista === 'previa'" @click="descargarImagen('jpg')" :disabled="generandoImagen"
             class="fixed bottom-6 right-6 bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-[0_10px_25px_rgba(0,0,0,0.5)] text-2xl hover:bg-gray-800 transition z-50"
             :class="{'opacity-50 cursor-not-allowed': generandoImagen, 'animate-bounce': !generandoImagen}">
             <i v-if="!generandoImagen" class="fas fa-share-nodes"></i>
@@ -510,6 +608,8 @@
         const CLAVE_HISTORIAL = 'taller35_historial';
         const CLAVE_CATALOGO = 'taller35_catalogo';
         const CLAVE_FOLIOS = 'taller35_folios';
+        const CLAVE_COLORES = 'taller35_colores';
+        const MAX_COLORES = 8;
         const MAX_HISTORIAL = 30;
         let chequeoActual = 0;
         let temporizadorAviso = null;
@@ -521,6 +621,57 @@
 
         function sinAcentos(texto) {
             return String(texto).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        }
+
+        // Convierte un entero (0 a 999,999,999) a palabras en español
+        function enteroALetras(n) {
+            const UNIDADES = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE', 'DIEZ',
+                'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE', 'VEINTE',
+                'VEINTIÚN', 'VEINTIDÓS', 'VEINTITRÉS', 'VEINTICUATRO', 'VEINTICINCO', 'VEINTISÉIS', 'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE'];
+            const DECENAS = ['', '', '', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+            const CENTENAS = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS',
+                'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+            function menorAMil(x) {
+                if (x === 0) return '';
+                if (x === 100) return 'CIEN';
+                const c = Math.floor(x / 100), r = x % 100;
+                let texto = CENTENAS[c];
+                if (r > 0) {
+                    let parte;
+                    if (r < 30) parte = UNIDADES[r];
+                    else {
+                        const d = Math.floor(r / 10), u = r % 10;
+                        parte = DECENAS[d] + (u ? ' Y ' + UNIDADES[u] : '');
+                    }
+                    texto = (texto ? texto + ' ' : '') + parte;
+                }
+                return texto;
+            }
+
+            if (n === 0) return 'CERO';
+            const millones = Math.floor(n / 1000000), miles = Math.floor((n % 1000000) / 1000), resto = n % 1000;
+            const partes = [];
+            if (millones) partes.push(millones === 1 ? 'UN MILLÓN' : menorAMil(millones) + ' MILLONES');
+            if (miles) partes.push(miles === 1 ? 'MIL' : menorAMil(miles) + ' MIL');
+            if (resto) partes.push(menorAMil(resto));
+            return partes.join(' ');
+        }
+
+        // Ej. 580.5 -> "QUINIENTOS OCHENTA PESOS 50/100 M.N."
+        function pesosConLetra(monto) {
+            const centavosTotales = Math.round(Math.max(0, Number(monto) || 0) * 100);
+            const pesos = Math.floor(centavosTotales / 100);
+            const centavos = String(centavosTotales % 100).padStart(2, '0');
+            let letras = enteroALetras(pesos);
+            // Millones exactos llevan "DE": "UN MILLÓN DE PESOS"
+            if (pesos % 1000000 === 0 && pesos > 0) letras += ' DE';
+            return `${letras} ${pesos === 1 ? 'PESO' : 'PESOS'} ${centavos}/100 M.N.`;
+        }
+
+        // Quita caracteres no válidos para nombre de archivo
+        function limpiarNombre(texto) {
+            return String(texto).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40);
         }
 
         // Fecha de hoy en hora local (toISOString usa UTC y en la noche daba el día siguiente)
@@ -540,6 +691,11 @@
                 cliente: '',
                 folio: '',
                 anticipo: '',
+                descuento: '',
+                descuentoTipo: 'porcentaje',
+                vigenciaDias: '',
+                notas: '',
+                mostrarLetra: true,
                 items: [{ descripcion: '', costo: 0, cantidad: 1 }]
             };
         }
@@ -571,6 +727,8 @@
             base.items = base.items.map(i => ({ descripcion: i.descripcion || '', costo: i.costo ?? 0, cantidad: i.cantidad ?? 1 }));
             if (typeof base.cliente !== 'string') base.cliente = '';
             if (typeof base.folio !== 'string') base.folio = '';
+            if (typeof base.notas !== 'string') base.notas = '';
+            if (base.descuentoTipo !== 'monto') base.descuentoTipo = 'porcentaje';
             return base;
         }
 
@@ -579,7 +737,9 @@
                 const historial = leerJSON(CLAVE_HISTORIAL);
                 const catalogo = leerJSON(CLAVE_CATALOGO);
                 const folios = leerJSON(CLAVE_FOLIOS);
+                const colores = leerJSON(CLAVE_COLORES);
                 return {
+                    coloresGuardados: Array.isArray(colores) ? colores : [],
                     catalogo: Array.isArray(catalogo) ? catalogo : [],
                     folios: folios && typeof folios === 'object' ? folios : {},
                     mostrarCatalogo: false,
@@ -628,8 +788,45 @@
                         cliente: this.cliente,
                         folio: this.folio,
                         anticipo: this.anticipo,
+                        descuento: this.descuento,
+                        descuentoTipo: this.descuentoTipo,
+                        vigenciaDias: this.vigenciaDias,
+                        notas: this.notas,
+                        mostrarLetra: this.mostrarLetra,
                         items: this.items
                     };
+                },
+                vigenciaFormateada() {
+                    const dias = parseInt(this.vigenciaDias);
+                    if (!(dias > 0) || !this.fechaInput) return '';
+                    const [a, m, d] = this.fechaInput.split('-').map(Number);
+                    const fin = new Date(a, m - 1, d + dias);
+                    const dos = n => String(n).padStart(2, '0');
+                    return this.formatearFecha(`${fin.getFullYear()}-${dos(fin.getMonth() + 1)}-${dos(fin.getDate())}`);
+                },
+                descuentoNum() {
+                    return Math.max(0, Number(this.descuento) || 0);
+                },
+                // El descuento se aplica al subtotal, antes del IVA
+                descuentoMonto() {
+                    const monto = this.descuentoTipo === 'monto'
+                        ? this.descuentoNum
+                        : this.subtotal * Math.min(this.descuentoNum, 100) / 100;
+                    return this.redondear(Math.min(monto, this.subtotal));
+                },
+                baseGravable() {
+                    return this.subtotal - this.descuentoMonto;
+                },
+                totalConLetra() {
+                    return pesosConLetra(this.total);
+                },
+                problemasArticulos() {
+                    const p = [];
+                    if (this.items.some(i => !i.descripcion.trim())) p.push('Hay artículos sin descripción.');
+                    if (this.items.some(i => Number(i.costo) < 0)) p.push('Hay artículos con precio negativo.');
+                    if (this.items.some(i => !(Number(i.cantidad) > 0))) p.push('Hay artículos con cantidad en 0 o vacía.');
+                    if (!this.items.length) p.push('No hay artículos en la lista.');
+                    return p;
                 },
                 folioSiguiente() {
                     const prefijo = prefijoFolio(this.tipoDoc);
@@ -657,16 +854,16 @@
                     return this.formatearFecha(this.entregaInput);
                 },
                 subtotal() {
-                    return this.items.reduce((sum, item) => sum + (item.costo * item.cantidad), 0);
+                    return this.items.reduce((sum, item) => sum + ((Number(item.costo) || 0) * (Number(item.cantidad) || 0)), 0);
                 },
                 iva() {
-                    return this.subtotal * 0.16;
+                    return this.baseGravable * 0.16;
                 },
                 total() {
                     if (this.tipoDoc === 'cotizacion_iva') {
-                        return this.subtotal + this.iva;
+                        return this.baseGravable + this.iva;
                     }
-                    return this.subtotal;
+                    return this.baseGravable;
                 }
             },
             methods: {
@@ -688,6 +885,27 @@
                 },
                 redondear(n) {
                     return Math.round((Number(n) || 0) * 100) / 100;
+                },
+                guardarColor() {
+                    const c = this.colorTema.toLowerCase();
+                    if (this.coloresGuardados.includes(c)) {
+                        this.mostrarAviso('Ese color ya está guardado');
+                        return;
+                    }
+                    this.coloresGuardados = [c, ...this.coloresGuardados].slice(0, MAX_COLORES);
+                    guardarJSON(CLAVE_COLORES, this.coloresGuardados);
+                    this.mostrarAviso('Color guardado');
+                },
+                borrarColor(c) {
+                    this.coloresGuardados = this.coloresGuardados.filter(x => x !== c);
+                    guardarJSON(CLAVE_COLORES, this.coloresGuardados);
+                },
+                // Ej. Cotizacion_COT-0012_Ana_Lopez_2026-11-14
+                nombreArchivo() {
+                    const partes = [this.tipoDoc === 'ticket' ? 'Ticket' : 'Cotizacion', this.folioMostrado];
+                    if (this.cliente.trim()) partes.push(this.cliente.trim());
+                    partes.push(this.fechaInput);
+                    return partes.map(limpiarNombre).filter(Boolean).join('_');
                 },
                 mostrarAviso(texto) {
                     this.aviso = texto;
@@ -798,19 +1016,42 @@
                     this.historial.splice(index, 1);
                     guardarJSON(CLAVE_HISTORIAL, this.historial);
                 },
-                async descargarImagen() {
+                // Comparte el archivo con el menú nativo (iPhone/Android) o lo descarga en PC
+                async compartirArchivo(blob, nombre, tipo) {
+                    if (navigator.share && navigator.canShare) {
+                        const file = new File([blob], nombre, { type: tipo });
+                        if (navigator.canShare({ files: [file] })) {
+                            try {
+                                await navigator.share({ title: 'Documento Taller 35', files: [file] });
+                                return; // Éxito en celular
+                            } catch (err) {
+                                // Si cierra el menú de compartir, no es error real: seguimos con la descarga
+                                console.log('El usuario cerró el menú de compartir');
+                            }
+                        }
+                    }
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = nombre;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                },
+                // formato: 'jpg' (imagen) o 'pdf'
+                async descargarImagen(formato = 'jpg') {
                     if (this.generandoImagen) return;
-                    if (this.desborde && !confirm('El contenido no cabe en la hoja y saldrá cortado. ¿Generar la imagen de todos modos?')) return;
+                    const problemas = [...this.problemasArticulos];
+                    if (this.desborde) problemas.push('El contenido no cabe en la hoja y saldrá cortado.');
+                    if (problemas.length && !confirm(problemas.join('\n') + '\n\n¿Generar de todos modos?')) return;
                     this.generandoImagen = true;
 
                     try {
                         await this.$nextTick();
                         await new Promise(r => setTimeout(r, 500));
 
-                        const element = this.$refs.documentoImagen;
-                        const nombreArchivo = this.tipoDoc === 'ticket' ? 'Ticket_Taller35.jpg' : 'Cotizacion_Taller35.jpg';
-
-                        const canvas = await html2canvas(element, {
+                        const nombre = this.nombreArchivo();
+                        const canvas = await html2canvas(this.$refs.documentoImagen, {
                             scale: 2,
                             useCORS: true,
                             backgroundColor: '#ffffff',
@@ -822,48 +1063,22 @@
                         this.confirmarFolio();
                         this.guardarEnHistorial();
 
-                        // Convertimos la imagen a un Blob (Formato ligero ideal para iPhone/Android)
-                        canvas.toBlob(async (blob) => {
-                            if (!blob) {
-                                this.generandoImagen = false;
-                                alert("Error al procesar la imagen.");
-                                return;
-                            }
-
-                            // MAGIA PARA iPHONE Y ANDROID MODERNOS: Usar menú de compartir nativo
-                            if (navigator.share && navigator.canShare) {
-                                const file = new File([blob], nombreArchivo, { type: 'image/jpeg' });
-
-                                if (navigator.canShare({ files: [file] })) {
-                                    try {
-                                        await navigator.share({
-                                            title: 'Documento Taller 35',
-                                            files: [file]
-                                        });
-                                        this.generandoImagen = false;
-                                        return; // Éxito total en celular
-                                    } catch (err) {
-                                        console.log("El usuario cerró el menú de compartir");
-                                        // Si cancela, no es un error real, solo regresamos a la normalidad
-                                    }
-                                }
-                            }
-
-                            // FALLBACK: Si está en PC o falla el menú de compartir, forzamos descarga tradicional
-                            const link = document.createElement('a');
-                            link.href = URL.createObjectURL(blob);
-                            link.download = nombreArchivo;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            URL.revokeObjectURL(link.href);
-
-                            this.generandoImagen = false;
-                        }, 'image/jpeg', 0.95);
-
+                        let blob;
+                        if (formato === 'pdf') {
+                            // La hoja mide 794x1123 px, que es exactamente A4 (210x297 mm)
+                            const pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                            pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
+                            blob = pdf.output('blob');
+                            await this.compartirArchivo(blob, nombre + '.pdf', 'application/pdf');
+                        } else {
+                            blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95));
+                            if (!blob) throw new Error('No se pudo procesar la imagen');
+                            await this.compartirArchivo(blob, nombre + '.jpg', 'image/jpeg');
+                        }
                     } catch (error) {
-                        console.error("Error al generar:", error);
-                        alert("Hubo un problema al crear la imagen. Por favor intenta de nuevo.");
+                        console.error('Error al generar:', error);
+                        alert('Hubo un problema al crear el documento. Por favor intenta de nuevo.');
+                    } finally {
                         this.generandoImagen = false;
                     }
                 }
