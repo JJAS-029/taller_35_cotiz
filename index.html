@@ -125,10 +125,10 @@
                     <option value="cotizacion_simple">Cotización (Sin IVA)</option>
                     <option value="ticket">Ticket (Con datos bancarios)</option>
                 </select>
-                <label v-if="tipoDoc === 'ticket'"
+                <label
                     class="flex items-center gap-3 mt-3 bg-gray-50 p-3 rounded-lg border-2 border-gray-200 cursor-pointer">
                     <input type="checkbox" v-model="mostrarFrase" class="w-5 h-5 accent-black">
-                    <span class="text-sm font-bold text-gray-700">Mostrar frase "¡Fue un placer trabajar en tu proyecto!"</span>
+                    <span class="text-sm font-bold text-gray-700">Mostrar frase "¡{{ tipoDoc === 'ticket' ? 'Fue' : 'Será' }} un placer trabajar en tu proyecto!"</span>
                 </label>
             </div>
 
@@ -290,7 +290,7 @@
                                 <p class="text-xl tracking-widest font-semibold text-gray-800 uppercase">KATY PAOLA MEJIA
                                     GARCIA / MERCADO PAGO</p>
                             </div>
-                            <h2 v-if="tipoDoc !== 'ticket' || mostrarFrase" class="text-2xl font-bold tracking-widest text-center uppercase"
+                            <h2 v-if="mostrarFrase" class="text-2xl font-bold tracking-widest text-center uppercase"
                                 style="line-height: 1.5;">
                                 {{ tipoDoc === 'ticket' ? '¡FUE UN PLACER TRABAJAR' : '¡SERÁ UN PLACER TRABAJAR' }} <br>
                                 EN TU PROYECTO!
@@ -338,13 +338,19 @@
                     vista: 'formulario',
                     tipoDoc: 'cotizacion_iva',
                     colorTema: '#000000',
-                    mostrarFrase: false,
+                    mostrarFrase: true,
                     fechaInput: hoy,
                     entregaInput: '',
                     generandoImagen: false,
                     items: [
                         { descripcion: 'Vivoletas estándar 12x7\nde acrílico espejo dorado 3mm', costo: 40.00, cantidad: 1 }
                     ]
+                }
+            },
+            watch: {
+                // Por defecto: frase visible en cotizaciones, oculta en ticket
+                tipoDoc(nuevo) {
+                    this.mostrarFrase = nuevo !== 'ticket';
                 }
             },
             computed: {
