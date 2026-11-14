@@ -192,6 +192,12 @@
                     <input type="text" v-model="cliente" placeholder="Nombre del cliente (opcional)"
                         class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none">
                 </div>
+                <div>
+                    <label class="block text-sm font-bold mb-2 text-gray-700">Folio</label>
+                    <input type="text" v-model="folio" :placeholder="folioSiguiente + ' (automático)'"
+                        class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none uppercase">
+                    <p class="text-xs text-gray-500 mt-1">Déjalo vacío y se asigna solo al generar la imagen.</p>
+                </div>
             </div>
 
             <h3 class="font-bold text-lg mt-8 mb-4 border-b-2 pb-2">Lista de Artículos</h3>
@@ -199,6 +205,10 @@
             <!-- Tarjetas de Artículos -->
             <div v-for="(item, index) in items" :key="index"
                 class="bg-gray-50 p-4 mb-4 rounded-xl border-2 border-gray-100 relative shadow-sm">
+                <button @click="guardarEnCatalogo(item)" title="Guardar en catálogo"
+                    class="absolute top-2 right-12 w-8 h-8 flex items-center justify-center bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200">
+                    <i class="fas fa-bookmark"></i>
+                </button>
                 <button @click="removeItem(index)"
                     class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200">
                     <i class="fas fa-trash-alt"></i>
@@ -234,10 +244,41 @@
                 quita artículos o divídelos en dos documentos.
             </div>
 
-            <button @click="addItem"
-                class="w-full bg-gray-100 hover:bg-gray-200 text-black font-bold py-4 px-4 rounded-xl mb-6 border-2 border-dashed border-gray-300 transition">
-                <i class="fas fa-plus mr-2"></i> Añadir otro artículo
-            </button>
+            <div class="flex gap-3 mb-6">
+                <button @click="addItem"
+                    class="flex-1 bg-gray-100 hover:bg-gray-200 text-black font-bold py-4 px-3 rounded-xl border-2 border-dashed border-gray-300 transition">
+                    <i class="fas fa-plus mr-1"></i> Añadir artículo
+                </button>
+                <button @click="abrirCatalogo"
+                    class="flex-1 bg-yellow-50 hover:bg-yellow-100 text-black font-bold py-4 px-3 rounded-xl border-2 border-dashed border-yellow-300 transition">
+                    <i class="fas fa-book-open mr-1"></i> Del catálogo
+                </button>
+            </div>
+
+            <!-- ANTICIPO Y SALDO -->
+            <h3 class="font-bold text-lg mt-8 mb-4 border-b-2 pb-2">Pago</h3>
+            <div class="mb-6">
+                <label class="block text-sm font-bold mb-2 text-gray-700">Anticipo</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-3 text-gray-500 font-bold">$</span>
+                    <input type="number" v-model="anticipo" placeholder="0.00" step="0.01" min="0"
+                        class="w-full p-3 pl-7 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none">
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <button @click="anticipo = redondear(total / 2)"
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-sm font-bold py-2 rounded-lg">50%</button>
+                    <button @click="anticipo = redondear(total)"
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-sm font-bold py-2 rounded-lg">Pagado completo</button>
+                    <button @click="anticipo = ''"
+                        class="flex-1 bg-gray-100 hover:bg-gray-200 text-sm font-bold py-2 rounded-lg">Quitar</button>
+                </div>
+                <p v-if="anticipoNum > 0" class="text-sm mt-2 text-gray-600">
+                    Total ${{ formatMoney(total) }} · Resta <span class="font-bold">${{ formatMoney(resta) }}</span>
+                </p>
+                <p v-if="anticipoNum > total + 0.005" class="text-sm mt-1 text-red-600 font-semibold">
+                    <i class="fas fa-triangle-exclamation mr-1"></i> El anticipo es mayor que el total.
+                </p>
+            </div>
 
             <button @click="vista = 'previa'"
                 class="w-full bg-black text-white font-bold py-4 px-4 rounded-xl shadow-lg transition text-lg mt-4">
@@ -251,7 +292,7 @@
                     class="flex items-center justify-between bg-gray-50 p-3 mb-2 rounded-lg border-2 border-gray-100">
                     <div class="min-w-0">
                         <p class="font-bold text-sm truncate">{{ h.cliente || 'Sin cliente' }}</p>
-                        <p class="text-xs text-gray-500">{{ nombreTipo(h.tipoDoc) }} · {{ formatearFecha(h.fechaInput)
+                        <p class="text-xs text-gray-500">{{ h.folio ? h.folio + ' · ' : '' }}{{ nombreTipo(h.tipoDoc) }} · {{ formatearFecha(h.fechaInput)
                             }} · ${{ formatMoney(h.total) }}</p>
                     </div>
                     <div class="flex gap-2 shrink-0 ml-2">
@@ -299,6 +340,10 @@
                                     :style="{ color: colorTema }" style="letter-spacing: 4px;">
                                     {{ tipoDoc === 'ticket' ? 'TICKET' : 'COTIZACIÓN' }}
                                 </h1>
+                                <p class="text-sm tracking-wide mb-1">
+                                    <span class="font-bold text-base">FOLIO:</span>
+                                    <span class="font-normal text-base ml-2 uppercase">{{ folioMostrado }}</span>
+                                </p>
                                 <p class="text-sm tracking-wide">
                                     <span class="font-bold text-base">FECHA:</span>
                                     <span class="font-normal text-base ml-2"
@@ -355,6 +400,12 @@
                                     <span class="font-bold">TOTAL:</span> <span class="font-bold">${{ formatMoney(total)
                                         }}</span>
                                 </div>
+                                <div v-if="anticipoNum > 0" class="text-lg tracking-wide mt-3">
+                                    <p><span class="font-bold">ANTICIPO:</span> <span>${{ formatMoney(anticipoNum)
+                                            }}</span></p>
+                                    <p><span class="font-bold">RESTA:</span> <span class="font-bold">${{
+                                            formatMoney(resta) }}</span></p>
+                                </div>
                             </div>
                         </div>
 
@@ -404,6 +455,52 @@
             <i v-else class="fas fa-circle-notch fa-spin"></i>
         </button>
 
+        <!-- CATÁLOGO DE PRODUCTOS FRECUENTES -->
+        <div v-if="mostrarCatalogo" class="fixed inset-0 z-[60] bg-black/50 flex items-end justify-center"
+            @click.self="mostrarCatalogo = false">
+            <div class="bg-white w-full max-w-lg rounded-t-2xl p-5 max-h-[80vh] flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-lg">Catálogo</h3>
+                    <button @click="mostrarCatalogo = false"
+                        class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+                <input v-if="catalogo.length" type="text" v-model="busquedaCatalogo" placeholder="Buscar..."
+                    class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-base focus:border-black focus:outline-none mb-3">
+                <div class="overflow-y-auto">
+                    <p v-if="!catalogo.length" class="text-sm text-gray-500 py-6 text-center">
+                        Aún no hay productos. Toca <i class="fas fa-bookmark text-yellow-700"></i> en un artículo para
+                        guardarlo aquí.
+                    </p>
+                    <p v-else-if="!catalogoFiltrado.length" class="text-sm text-gray-500 py-6 text-center">
+                        Sin resultados.
+                    </p>
+                    <div v-for="c in catalogoFiltrado" :key="c.id"
+                        class="flex items-center justify-between bg-gray-50 p-3 mb-2 rounded-lg border-2 border-gray-100">
+                        <div class="min-w-0 mr-2">
+                            <p class="text-sm font-semibold whitespace-pre-wrap">{{ c.descripcion }}</p>
+                            <p class="text-xs text-gray-500">${{ formatMoney(c.costo) }}</p>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <button @click="agregarDelCatalogo(c)"
+                                class="px-3 py-2 bg-black text-white text-xs font-bold rounded-lg">Agregar</button>
+                            <button @click="borrarDelCatalogo(c)"
+                                class="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENSAJE BREVE DE CONFIRMACIÓN -->
+        <div v-if="aviso"
+            class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[70] bg-black text-white text-sm font-semibold px-4 py-3 rounded-xl shadow-lg whitespace-nowrap">
+            {{ aviso }}
+        </div>
+
     </div>
 
     <script>
@@ -411,8 +508,20 @@
 
         const CLAVE_BORRADOR = 'taller35_borrador';
         const CLAVE_HISTORIAL = 'taller35_historial';
+        const CLAVE_CATALOGO = 'taller35_catalogo';
+        const CLAVE_FOLIOS = 'taller35_folios';
         const MAX_HISTORIAL = 30;
         let chequeoActual = 0;
+        let temporizadorAviso = null;
+
+        // Cotizaciones (con y sin IVA) comparten numeración; tickets llevan la suya
+        function prefijoFolio(tipo) {
+            return tipo === 'ticket' ? 'TCK' : 'COT';
+        }
+
+        function sinAcentos(texto) {
+            return String(texto).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        }
 
         // Fecha de hoy en hora local (toISOString usa UTC y en la noche daba el día siguiente)
         function fechaHoy() {
@@ -429,6 +538,8 @@
                 fechaInput: fechaHoy(),
                 entregaInput: '',
                 cliente: '',
+                folio: '',
+                anticipo: '',
                 items: [{ descripcion: '', costo: 0, cantidad: 1 }]
             };
         }
@@ -459,13 +570,21 @@
             if (!Array.isArray(base.items) || base.items.length === 0) base.items = documentoVacio().items;
             base.items = base.items.map(i => ({ descripcion: i.descripcion || '', costo: i.costo ?? 0, cantidad: i.cantidad ?? 1 }));
             if (typeof base.cliente !== 'string') base.cliente = '';
+            if (typeof base.folio !== 'string') base.folio = '';
             return base;
         }
 
         createApp({
             data() {
                 const historial = leerJSON(CLAVE_HISTORIAL);
+                const catalogo = leerJSON(CLAVE_CATALOGO);
+                const folios = leerJSON(CLAVE_FOLIOS);
                 return {
+                    catalogo: Array.isArray(catalogo) ? catalogo : [],
+                    folios: folios && typeof folios === 'object' ? folios : {},
+                    mostrarCatalogo: false,
+                    busquedaCatalogo: '',
+                    aviso: '',
                     vista: 'formulario',
                     ...normalizarDocumento(leerJSON(CLAVE_BORRADOR)),
                     generandoImagen: false,
@@ -480,6 +599,8 @@
                 tipoDoc(nuevo) {
                     if (this.restaurando) return;
                     this.mostrarFrase = nuevo !== 'ticket';
+                    // Si cambia de cotización a ticket (o al revés), el folio anterior ya no corresponde
+                    if (this.folio && !this.folio.toUpperCase().startsWith(prefijoFolio(nuevo) + '-')) this.folio = '';
                 },
                 // Guarda el borrador y revisa si cabe en la hoja con cada cambio
                 documento: {
@@ -505,8 +626,29 @@
                         fechaInput: this.fechaInput,
                         entregaInput: this.entregaInput,
                         cliente: this.cliente,
+                        folio: this.folio,
+                        anticipo: this.anticipo,
                         items: this.items
                     };
+                },
+                folioSiguiente() {
+                    const prefijo = prefijoFolio(this.tipoDoc);
+                    const numero = (Number(this.folios[prefijo]) || 0) + 1;
+                    return `${prefijo}-${String(numero).padStart(4, '0')}`;
+                },
+                folioMostrado() {
+                    return this.folio.trim() || this.folioSiguiente;
+                },
+                anticipoNum() {
+                    return Math.max(0, Number(this.anticipo) || 0);
+                },
+                resta() {
+                    return Math.max(0, this.redondear(this.total - this.anticipoNum));
+                },
+                catalogoFiltrado() {
+                    const q = sinAcentos(this.busquedaCatalogo.trim());
+                    if (!q) return this.catalogo;
+                    return this.catalogo.filter(c => sinAcentos(c.descripcion).includes(q));
                 },
                 fechaFormateada() {
                     return this.formatearFecha(this.fechaInput);
@@ -543,6 +685,58 @@
                 },
                 formatMoney(value) {
                     return Number(value).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+                redondear(n) {
+                    return Math.round((Number(n) || 0) * 100) / 100;
+                },
+                mostrarAviso(texto) {
+                    this.aviso = texto;
+                    clearTimeout(temporizadorAviso);
+                    temporizadorAviso = setTimeout(() => { this.aviso = ''; }, 2000);
+                },
+                // Al generar: asigna el folio automático si está vacío, y mantiene el contador al día
+                confirmarFolio() {
+                    if (!this.folio.trim()) this.folio = this.folioSiguiente;
+                    const m = this.folio.trim().toUpperCase().match(/^(COT|TCK)-(\d+)$/);
+                    if (m && Number(m[2]) > (Number(this.folios[m[1]]) || 0)) {
+                        this.folios = { ...this.folios, [m[1]]: Number(m[2]) };
+                        guardarJSON(CLAVE_FOLIOS, this.folios);
+                    }
+                },
+                abrirCatalogo() {
+                    this.busquedaCatalogo = '';
+                    this.mostrarCatalogo = true;
+                },
+                guardarEnCatalogo(item) {
+                    const descripcion = (item.descripcion || '').trim();
+                    if (!descripcion) {
+                        this.mostrarAviso('Escribe una descripción primero');
+                        return;
+                    }
+                    const costo = this.redondear(item.costo);
+                    const existente = this.catalogo.find(c => c.descripcion === descripcion);
+                    if (existente) {
+                        existente.costo = costo;
+                        this.mostrarAviso('Precio actualizado en el catálogo');
+                    } else {
+                        this.catalogo.push({ id: Date.now(), descripcion, costo });
+                        this.mostrarAviso('Guardado en el catálogo');
+                    }
+                    guardarJSON(CLAVE_CATALOGO, this.catalogo);
+                },
+                agregarDelCatalogo(c) {
+                    const nuevo = { descripcion: c.descripcion, costo: c.costo, cantidad: 1 };
+                    // Si solo hay un artículo vacío, lo reemplaza en vez de dejarlo en blanco
+                    const unicoVacio = this.items.length === 1 && !this.items[0].descripcion.trim() && !Number(this.items[0].costo);
+                    if (unicoVacio) this.items.splice(0, 1, nuevo);
+                    else this.items.push(nuevo);
+                    this.mostrarCatalogo = false;
+                    this.mostrarAviso('Artículo agregado');
+                },
+                borrarDelCatalogo(c) {
+                    if (!confirm('¿Quitar este producto del catálogo?')) return;
+                    this.catalogo = this.catalogo.filter(x => x.id !== c.id);
+                    guardarJSON(CLAVE_CATALOGO, this.catalogo);
                 },
                 nombreTipo(tipo) {
                     return {
@@ -625,6 +819,7 @@
                             windowWidth: 794
                         });
 
+                        this.confirmarFolio();
                         this.guardarEnHistorial();
 
                         // Convertimos la imagen a un Blob (Formato ligero ideal para iPhone/Android)
