@@ -20,6 +20,16 @@
     <!-- Iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="logo_koala.png" type="image/x-icon">
+    <!-- Aplica el modo oscuro antes de pintar la página para que no parpadee -->
+    <script>
+        (function () {
+            var guardado = null;
+            try { guardado = localStorage.getItem('taller35_tema'); } catch (e) { }
+            var oscuro = guardado ? guardado === 'oscuro'
+                : !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (oscuro) document.documentElement.classList.add('dark');
+        })();
+    </script>
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -34,6 +44,8 @@
             min-height: 1123px !important;
             flex-shrink: 0 !important;
             background: white;
+            /* Color de texto fijo: la hoja siempre se ve igual, aunque la interfaz esté en modo oscuro */
+            color: #1f2937;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
             position: relative;
             overflow: hidden;
@@ -121,6 +133,147 @@
             display: flex;
             justify-content: center;
         }
+
+        /* ===== MODO OSCURO =====
+           Solo afecta la interfaz (elementos con clase .ui y el fondo de la vista previa).
+           La hoja (.page-container) no cambia, para que la imagen y el PDF salgan igual. */
+        html.dark {
+            color-scheme: dark;
+        }
+
+        html.dark body {
+            background-color: #0b0d12;
+            color: #e5e7eb;
+        }
+
+        html.dark .fondo-previa {
+            background-color: #0b0d12;
+        }
+
+        html.dark .boton-compartir {
+            border: 2px solid #f3f4f6;
+        }
+
+        /* Campos sin color de fondo propio */
+        html.dark .ui input,
+        html.dark .ui textarea,
+        html.dark .ui select {
+            background-color: #111827;
+        }
+
+        html.dark .ui ::placeholder {
+            color: #6b7280;
+        }
+
+        /* Fondos */
+        html.dark .ui.bg-white,
+        html.dark .ui .bg-white {
+            background-color: #111827;
+        }
+
+        html.dark .ui .bg-gray-50 {
+            background-color: #1f2937;
+        }
+
+        html.dark .ui .bg-gray-100 {
+            background-color: #374151;
+        }
+
+        html.dark .ui .hover\:bg-gray-100:hover,
+        html.dark .ui .hover\:bg-gray-200:hover {
+            background-color: #4b5563;
+        }
+
+        /* Bordes */
+        html.dark .ui .border,
+        html.dark .ui .border-b-2,
+        html.dark .ui .border-gray-100,
+        html.dark .ui .border-gray-200 {
+            border-color: #374151;
+        }
+
+        html.dark .ui .border-gray-300 {
+            border-color: #4b5563;
+        }
+
+        /* Textos */
+        html.dark .ui .text-black {
+            color: #f9fafb;
+        }
+
+        html.dark .ui .text-gray-700 {
+            color: #d1d5db;
+        }
+
+        html.dark .ui .text-gray-600,
+        html.dark .ui .text-gray-500 {
+            color: #9ca3af;
+        }
+
+        /* Botones negros (seleccionado, Abrir, Agregar, Revisar): se invierten a claros */
+        html.dark .ui .bg-black {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        html.dark .ui .border-black {
+            border-color: #f3f4f6;
+        }
+
+        html.dark .ui .accent-black {
+            accent-color: #f3f4f6;
+        }
+
+        html.dark .ui .ring-black {
+            --tw-ring-color: #f3f4f6;
+            --tw-ring-offset-color: #111827;
+        }
+
+        /* Avisos y botones de color */
+        html.dark .ui .bg-red-50 {
+            background-color: rgba(127, 29, 29, 0.35);
+        }
+
+        html.dark .ui .bg-red-100 {
+            background-color: rgba(127, 29, 29, 0.55);
+        }
+
+        html.dark .ui .hover\:bg-red-200:hover {
+            background-color: rgba(153, 27, 27, 0.75);
+        }
+
+        html.dark .ui .border-red-200,
+        html.dark .ui .border-red-400 {
+            border-color: #b91c1c;
+        }
+
+        html.dark .ui .text-red-700,
+        html.dark .ui .text-red-600 {
+            color: #fca5a5;
+        }
+
+        html.dark .ui .bg-yellow-50 {
+            background-color: rgba(113, 63, 18, 0.35);
+        }
+
+        html.dark .ui .bg-yellow-100,
+        html.dark .ui .hover\:bg-yellow-100:hover {
+            background-color: rgba(133, 77, 14, 0.55);
+        }
+
+        html.dark .ui .hover\:bg-yellow-200:hover {
+            background-color: rgba(161, 98, 7, 0.7);
+        }
+
+        html.dark .ui .border-yellow-200,
+        html.dark .ui .border-yellow-300 {
+            border-color: #854d0e;
+        }
+
+        html.dark .ui .text-yellow-800,
+        html.dark .ui .text-yellow-700 {
+            color: #fde047;
+        }
     </style>
 </head>
 
@@ -139,10 +292,14 @@
                 class="flex-1 py-4 flex justify-center items-center transition">
                 <i class="fas fa-image mr-2 text-lg"></i> Vista Previa
             </button>
+            <button @click="alternarTema" :title="oscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+                class="w-14 py-4 flex justify-center items-center border-l border-gray-800 hover:bg-gray-800 transition">
+                <i class="fas text-lg" :class="oscuro ? 'fa-sun' : 'fa-moon'"></i>
+            </button>
         </div>
 
         <!-- PESTAÑA 1: FORMULARIO -->
-        <div v-show="vista === 'formulario'" class="flex-1 overflow-y-auto bg-white p-5 pb-24">
+        <div v-show="vista === 'formulario'" class="ui flex-1 overflow-y-auto bg-white p-5 pb-24">
 
             <div class="flex justify-end mb-3">
                 <button @click="nuevoDocumento"
@@ -383,13 +540,13 @@
         <!-- PESTAÑA 2: VISTA PREVIA (LA HOJA) -->
         <!-- Aviso flotante en la vista previa (no sale en la imagen) -->
         <div v-if="vista === 'previa' && desborde"
-            class="fixed top-[64px] left-4 right-4 z-40 bg-red-50 border-2 border-red-200 text-red-700 rounded-xl p-3 text-sm font-semibold shadow-lg">
+            class="ui fixed top-[64px] left-4 right-4 z-40 bg-red-50 border-2 border-red-200 text-red-700 rounded-xl p-3 text-sm font-semibold shadow-lg">
             <i class="fas fa-triangle-exclamation mr-2"></i>
             El contenido no cabe en la hoja; la parte de abajo saldrá cortada.
         </div>
 
         <!-- Se oculta fuera de pantalla (en vez de display:none) para poder medir si el contenido cabe -->
-        <div class="flex-1 overflow-auto bg-gray-200 p-4 pb-32 safe-wrapper"
+        <div class="fondo-previa flex-1 overflow-auto bg-gray-200 p-4 pb-32 safe-wrapper"
             :class="{'fuera-de-pantalla': vista !== 'previa'}">
             <div class="page-wrapper" :class="{'scaled-for-mobile': !generandoImagen}">
 
@@ -547,7 +704,7 @@
             <i class="fas fa-file-pdf mr-2 text-lg"></i> PDF
         </button>
         <button v-show="vista === 'previa'" @click="descargarImagen('jpg')" :disabled="generandoImagen"
-            class="fixed bottom-6 right-6 bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-[0_10px_25px_rgba(0,0,0,0.5)] text-2xl hover:bg-gray-800 transition z-50"
+            class="boton-compartir fixed bottom-6 right-6 bg-black text-white rounded-full w-16 h-16 flex items-center justify-center shadow-[0_10px_25px_rgba(0,0,0,0.5)] text-2xl hover:bg-gray-800 transition z-50"
             :class="{'opacity-50 cursor-not-allowed': generandoImagen, 'animate-bounce': !generandoImagen}">
             <i v-if="!generandoImagen" class="fas fa-share-nodes"></i>
             <i v-else class="fas fa-circle-notch fa-spin"></i>
@@ -556,7 +713,7 @@
         <!-- CATÁLOGO DE PRODUCTOS FRECUENTES -->
         <div v-if="mostrarCatalogo" class="fixed inset-0 z-[60] bg-black/50 flex items-end justify-center"
             @click.self="mostrarCatalogo = false">
-            <div class="bg-white w-full max-w-lg rounded-t-2xl p-5 max-h-[80vh] flex flex-col">
+            <div class="ui bg-white w-full max-w-lg rounded-t-2xl p-5 max-h-[80vh] flex flex-col">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="font-bold text-lg">Catálogo</h3>
                     <button @click="mostrarCatalogo = false"
@@ -610,6 +767,15 @@
         const CLAVE_FOLIOS = 'taller35_folios';
         const CLAVE_COLORES = 'taller35_colores';
         const MAX_COLORES = 8;
+        const CLAVE_TEMA = 'taller35_tema'; // también se lee en el <head> para evitar parpadeo
+
+        function leerTemaGuardado() {
+            try {
+                return localStorage.getItem(CLAVE_TEMA);
+            } catch (e) {
+                return null;
+            }
+        }
         const MAX_HISTORIAL = 30;
         let chequeoActual = 0;
         let temporizadorAviso = null;
@@ -739,6 +905,7 @@
                 const folios = leerJSON(CLAVE_FOLIOS);
                 const colores = leerJSON(CLAVE_COLORES);
                 return {
+                    oscuro: document.documentElement.classList.contains('dark'),
                     coloresGuardados: Array.isArray(colores) ? colores : [],
                     catalogo: Array.isArray(catalogo) ? catalogo : [],
                     folios: folios && typeof folios === 'object' ? folios : {},
@@ -772,6 +939,13 @@
                 }
             },
             mounted() {
+                // Si no se ha elegido tema a mano, sigue el modo claro/oscuro del celular
+                if (window.matchMedia) {
+                    const consulta = window.matchMedia('(prefers-color-scheme: dark)');
+                    const alCambiar = e => { if (!leerTemaGuardado()) this.aplicarTema(e.matches); };
+                    if (consulta.addEventListener) consulta.addEventListener('change', alCambiar);
+                    else if (consulta.addListener) consulta.addListener(alCambiar);
+                }
                 this.checarDesborde();
                 // La fuente y el logo cambian las medidas al terminar de cargar
                 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.checarDesborde());
@@ -885,6 +1059,14 @@
                 },
                 redondear(n) {
                     return Math.round((Number(n) || 0) * 100) / 100;
+                },
+                aplicarTema(oscuro) {
+                    this.oscuro = oscuro;
+                    document.documentElement.classList.toggle('dark', oscuro);
+                },
+                alternarTema() {
+                    this.aplicarTema(!this.oscuro);
+                    try { localStorage.setItem(CLAVE_TEMA, this.oscuro ? 'oscuro' : 'claro'); } catch (e) { }
                 },
                 guardarColor() {
                     const c = this.colorTema.toLowerCase();
